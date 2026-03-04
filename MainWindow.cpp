@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
+#include "SongDialog.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFileDialog>
@@ -230,20 +231,18 @@ void MainWindow::on_shuffleButton_clicked()
 
 void MainWindow::on_addSongButton_clicked()
 {
-    bool ok;
-    QString caption = QInputDialog::getText(this, "Add Song", "Enter song caption:", QLineEdit::Normal, "", &ok);
+    SongDialog dialog(this);
     
-    if (ok && !caption.isEmpty()) {
-        QString lyrics = QInputDialog::getMultiLineText(this, "Add Song", "Enter lyrics (optional):", "", &ok);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString caption = dialog.getCaption();
+        QString lyrics = dialog.getLyrics();
         
-        if (ok) {
-            SongItem newSong(caption, lyrics);
-            songModel->addSong(newSong);
-            
-            // Select the new item
-            QModelIndex newIndex = songModel->index(songModel->rowCount() - 1, 0);
-            ui->songListView->setCurrentIndex(newIndex);
-        }
+        SongItem newSong(caption, lyrics);
+        songModel->addSong(newSong);
+        
+        // Select the new item
+        QModelIndex newIndex = songModel->index(songModel->rowCount() - 1, 0);
+        ui->songListView->setCurrentIndex(newIndex);
     }
 }
 
@@ -255,18 +254,15 @@ void MainWindow::on_editSongButton_clicked()
     int row = currentIndex.row();
     SongItem song = songModel->getSong(row);
     
-    bool ok;
-    QString caption = QInputDialog::getText(this, "Edit Song", "Enter song caption:", QLineEdit::Normal, song.caption, &ok);
+    SongDialog dialog(this, song.caption, song.lyrics);
     
-    if (ok && !caption.isEmpty()) {
-        QString lyrics = QInputDialog::getMultiLineText(this, "Edit Song", "Enter lyrics (optional):", song.lyrics, &ok);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString caption = dialog.getCaption();
+        QString lyrics = dialog.getLyrics();
         
-        if (ok) {
-            SongItem editedSong(caption, lyrics);
-            // Update the model
-            songModel->setData(songModel->index(row, 0), caption, SongListModel::CaptionRole);
-            songModel->setData(songModel->index(row, 0), lyrics, SongListModel::LyricsRole);
-        }
+        // Update the model
+        songModel->setData(songModel->index(row, 0), caption, SongListModel::CaptionRole);
+        songModel->setData(songModel->index(row, 0), lyrics, SongListModel::LyricsRole);
     }
 }
 
