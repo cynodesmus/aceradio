@@ -17,6 +17,8 @@ add_executable(${PROJECT_NAME}
     main.cpp
     MainWindow.ui
     MainWindow.cpp
+    AdvancedSettingsDialog.ui
+    AdvancedSettingsDialog.cpp
     SongDialog.ui
     SongDialog.cpp
     SongListModel.cpp

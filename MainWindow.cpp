@@ -1,18 +1,15 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "SongDialog.h"
+#include "AdvancedSettingsDialog.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFileDialog>
 #include <QSettings>
 #include <QDebug>
 #include <QTextEdit>
-#include <QFormLayout>
 #include <QDialogButtonBox>
 #include <QLabel>
-#include <QTabWidget>
-#include <QLineEdit>
-#include <QScrollBar>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -215,14 +212,6 @@ void MainWindow::on_stopButton_clicked()
     }
 }
 
-void MainWindow::on_positionSlider_sliderMoved(int position)
-{
-    if (isPlaying && audioPlayer->isPlaying()) {
-        // Seek to the new position when slider is moved
-        audioPlayer->setPosition(position);
-    }
-}
-
 void MainWindow::on_shuffleButton_clicked()
 {
     shuffleMode = ui->shuffleButton->isChecked();
@@ -291,138 +280,34 @@ void MainWindow::on_removeSongButton_clicked()
 
 void MainWindow::on_advancedSettingsButton_clicked()
 {
-    // Create a dialog for advanced settings
-    QDialog dialog(this);
-    dialog.setWindowTitle("Advanced Settings");
-    dialog.resize(600, 400);
+    AdvancedSettingsDialog dialog(this);
     
-    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    // Set current values
+    dialog.setJsonTemplate(jsonTemplate);
+    dialog.setAceStepPath(aceStepPath);
+    dialog.setQwen3ModelPath(qwen3ModelPath);
+    dialog.setTextEncoderModelPath(textEncoderModelPath);
+    dialog.setDiTModelPath(ditModelPath);
+    dialog.setVAEModelPath(vaeModelPath);
     
-    // Tab widget for organized settings
-    QTabWidget *tabWidget = new QTabWidget(&dialog);
-    layout->addWidget(tabWidget);
-    
-    // JSON Template tab
-    QWidget *jsonTab = new QWidget();
-    QVBoxLayout *jsonLayout = new QVBoxLayout(jsonTab);
-    
-    QLabel *jsonLabel = new QLabel("JSON Template for AceStep generation:");
-    jsonLabel->setWordWrap(true);
-    jsonLayout->addWidget(jsonLabel);
-    
-    QTextEdit *jsonTemplateEdit = new QTextEdit();
-    jsonTemplateEdit->setPlainText(jsonTemplate);
-    jsonTemplateEdit->setMinimumHeight(200);
-    jsonLayout->addWidget(jsonTemplateEdit);
-    
-    tabWidget->addTab(jsonTab, "JSON Template");
-    
-    // Path Settings tab
-    QWidget *pathsTab = new QWidget();
-    QFormLayout *pathsLayout = new QFormLayout(pathsTab);
-    pathsLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-    
-    QLineEdit *aceStepPathEdit = new QLineEdit(aceStepPath);
-    QPushButton *aceStepBrowseBtn = new QPushButton("Browse...");
-    connect(aceStepBrowseBtn, &QPushButton::clicked, [this, aceStepPathEdit]() {
-        QString dir = QFileDialog::getExistingDirectory(this, "Select AceStep Build Directory", aceStepPathEdit->text());
-        if (!dir.isEmpty()) {
-            aceStepPathEdit->setText(dir);
-        }
-    });
-    
-    QHBoxLayout *aceStepLayout = new QHBoxLayout();
-    aceStepLayout->addWidget(aceStepPathEdit);
-    aceStepLayout->addWidget(aceStepBrowseBtn);
-    pathsLayout->addRow("AceStep Path:", aceStepLayout);
-    
-    QLineEdit *qwen3ModelEdit = new QLineEdit(qwen3ModelPath);
-    QPushButton *qwen3BrowseBtn = new QPushButton("Browse...");
-    connect(qwen3BrowseBtn, &QPushButton::clicked, [this, qwen3ModelEdit]() {
-        QString file = QFileDialog::getOpenFileName(this, "Select Qwen3 Model", qwen3ModelEdit->text(), "GGUF Files (*.gguf)");
-        if (!file.isEmpty()) {
-            qwen3ModelEdit->setText(file);
-        }
-    });
-    
-    QHBoxLayout *qwen3Layout = new QHBoxLayout();
-    qwen3Layout->addWidget(qwen3ModelEdit);
-    qwen3Layout->addWidget(qwen3BrowseBtn);
-    pathsLayout->addRow("Qwen3 Model:", qwen3Layout);
-    
-    QLineEdit *textEncoderEdit = new QLineEdit(textEncoderModelPath);
-    QPushButton *textEncoderBrowseBtn = new QPushButton("Browse...");
-    connect(textEncoderBrowseBtn, &QPushButton::clicked, [this, textEncoderEdit]() {
-        QString file = QFileDialog::getOpenFileName(this, "Select Text Encoder Model", textEncoderEdit->text(), "GGUF Files (*.gguf)");
-        if (!file.isEmpty()) {
-            textEncoderEdit->setText(file);
-        }
-    });
-    
-    QHBoxLayout *textEncoderLayout = new QHBoxLayout();
-    textEncoderLayout->addWidget(textEncoderEdit);
-    textEncoderLayout->addWidget(textEncoderBrowseBtn);
-    pathsLayout->addRow("Text Encoder Model:", textEncoderLayout);
-    
-    QLineEdit *ditModelEdit = new QLineEdit(ditModelPath);
-    QPushButton *ditModelBrowseBtn = new QPushButton("Browse...");
-    connect(ditModelBrowseBtn, &QPushButton::clicked, [this, ditModelEdit]() {
-        QString file = QFileDialog::getOpenFileName(this, "Select DiT Model", ditModelEdit->text(), "GGUF Files (*.gguf)");
-        if (!file.isEmpty()) {
-            ditModelEdit->setText(file);
-        }
-    });
-    
-    QHBoxLayout *ditModelLayout = new QHBoxLayout();
-    ditModelLayout->addWidget(ditModelEdit);
-    ditModelLayout->addWidget(ditModelBrowseBtn);
-    pathsLayout->addRow("DiT Model:", ditModelLayout);
-    
-    QLineEdit *vaeModelEdit = new QLineEdit(vaeModelPath);
-    QPushButton *vaeModelBrowseBtn = new QPushButton("Browse...");
-    connect(vaeModelBrowseBtn, &QPushButton::clicked, [this, vaeModelEdit]() {
-        QString file = QFileDialog::getOpenFileName(this, "Select VAE Model", vaeModelEdit->text(), "GGUF Files (*.gguf)");
-        if (!file.isEmpty()) {
-            vaeModelEdit->setText(file);
-        }
-    });
-    
-    QHBoxLayout *vaeModelLayout = new QHBoxLayout();
-    vaeModelLayout->addWidget(vaeModelEdit);
-    vaeModelLayout->addWidget(vaeModelBrowseBtn);
-    pathsLayout->addRow("VAE Model:", vaeModelLayout);
-    
-    tabWidget->addTab(pathsTab, "Model Paths");
-    
-    // Buttons
-    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel);
-    layout->addWidget(buttonBox);
-    
-    connect(buttonBox, &QDialogButtonBox::accepted, [&dialog, this, jsonTemplateEdit, aceStepPathEdit, qwen3ModelEdit, textEncoderEdit, ditModelEdit, vaeModelEdit]() {
+    if (dialog.exec() == QDialog::Accepted) {
         // Validate JSON template
         QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(jsonTemplateEdit->toPlainText().toUtf8(), &parseError);
+        QJsonDocument doc = QJsonDocument::fromJson(dialog.getJsonTemplate().toUtf8(), &parseError);
         if (!doc.isObject()) {
             QMessageBox::warning(this, "Invalid JSON", "Please enter valid JSON: " + QString(parseError.errorString()));
             return;
         }
         
         // Update settings
-        jsonTemplate = jsonTemplateEdit->toPlainText();
-        aceStepPath = aceStepPathEdit->text();
-        qwen3ModelPath = qwen3ModelEdit->text();
-        textEncoderModelPath = textEncoderEdit->text();
-        ditModelPath = ditModelEdit->text();
-        vaeModelPath = vaeModelEdit->text();
+        jsonTemplate = dialog.getJsonTemplate();
+        aceStepPath = dialog.getAceStepPath();
+        qwen3ModelPath = dialog.getQwen3ModelPath();
+        textEncoderModelPath = dialog.getTextEncoderModelPath();
+        ditModelPath = dialog.getDiTModelPath();
+        vaeModelPath = dialog.getVAEModelPath();
         
         saveSettings();
-        dialog.accept();
-    });
-    
-    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    
-    // Show the dialog
-    if (dialog.exec() == QDialog::Accepted) {
         QMessageBox::information(this, "Settings Saved", "Advanced settings have been saved successfully.");
     }
 }
@@ -525,4 +410,12 @@ void MainWindow::updatePlaybackStatus(bool playing)
 {
     isPlaying = playing;
     updateControls();
+}
+
+void MainWindow::on_positionSlider_sliderMoved(int position)
+{
+    if (isPlaying && audioPlayer->isPlaying()) {
+        // Seek to the new position when slider is moved
+        audioPlayer->setPosition(position);
+    }
 }
