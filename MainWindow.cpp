@@ -21,7 +21,8 @@ MainWindow::MainWindow(QWidget *parent)
       currentSongIndex(-1),
       isPlaying(false),
       isPaused(false),
-      shuffleMode(false)
+      shuffleMode(false),
+      isGeneratingNext(false)
 {
     ui->setupUi(this);
     
@@ -34,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Connect signals and slots
     connect(ui->actionAdvancedSettings, &QAction::triggered, this, &MainWindow::on_advancedSettingsButton_clicked);
     connect(audioPlayer, &AudioPlayer::playbackFinished, this, &MainWindow::playNextSong);
+    connect(audioPlayer, &AudioPlayer::playbackStarted, this, &MainWindow::playbackStarted);
     connect(aceStepWorker, &AceStepWorker::songGenerated, this, &MainWindow::songGenerated);
     connect(aceStepWorker, &AceStepWorker::generationError, this, &MainWindow::generationError);
     connect(aceStepWorker, &AceStepWorker::progressUpdate, ui->progressBar, &QProgressBar::setValue);
@@ -197,6 +199,9 @@ void MainWindow::on_skipButton_clicked()
         audioPlayer->stop();
         isPaused = false;
         playNextSong();
+        
+        // After playing the skipped-to song, start generating the next one
+        // We'll do this in playNextSong by checking if we're already playing
     }
 }
 
@@ -323,6 +328,7 @@ void MainWindow::generateAndPlayNext()
     // Show status
     ui->statusLabel->setText("Generating: " + song.caption);
     isPlaying = true;
+    isGeneratingNext = false; // Reset the flag when starting a new generation
     updateControls();
     
     // Generate the song with configurable paths
@@ -332,10 +338,43 @@ void MainWindow::generateAndPlayNext()
                                vaeModelPath);
 }
 
+void MainWindow::startNextSongGeneration()
+{
+    // Start generating the next song if we're playing and not already generating
+    if (isPlaying && !isGeneratingNext) {
+        isGeneratingNext = true;
+        
+        // Find and generate the next song
+        int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
+        if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
+            SongItem nextSong = songModel->getSong(nextIndex);
+            
+            // Generate the next song in the background
+            aceStepWorker->generateSong(nextSong.caption, nextSong.lyrics, jsonTemplate,
+                                       aceStepPath, qwen3ModelPath,
+                                       textEncoderModelPath, ditModelPath,
+                                       vaeModelPath);
+        }
+    }
+}
+
+void MainWindow::playbackStarted()
+{
+    // When playback starts, immediately start generating the next song
+    startNextSongGeneration();
+}
+
 void MainWindow::songGenerated(const QString &filePath)
 {
     if (!QFile::exists(filePath)) {
         generationError("Generated file not found: " + filePath);
+        return;
+    }
+    
+    // If we're in the middle of playback, this is a pre-generated next song
+    if (isPlaying && audioPlayer->isPlaying()) {
+        // Store the generated file path for when playback finishes
+        nextSongFilePath = filePath;
         return;
     }
     
@@ -353,23 +392,42 @@ void MainWindow::playNextSong()
 {
     if (!isPlaying) return;
     
-    // Find next song index
-    int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
-    
-    if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
-        currentSongIndex = nextIndex;
-        generateAndPlayNext();
+    // Check if we have a pre-generated next song
+    if (!nextSongFilePath.isEmpty()) {
+        ui->statusLabel->setText("Playing: " + QFileInfo(nextSongFilePath).baseName());
+        audioPlayer->play(nextSongFilePath);
+        nextSongFilePath.clear();
+        
+        // Update current index to the next song
+        int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
+        if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
+            currentSongIndex = nextIndex;
+        }
+        
+        // Start generating the song after this one
+        startNextSongGeneration();
     } else {
-        // No more songs
-        isPlaying = false;
-        isPaused = false;
-        ui->statusLabel->setText("Finished playback");
-        updateControls();
+        // Find next song index and generate it
+        int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
+        
+        if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
+            currentSongIndex = nextIndex;
+            generateAndPlayNext();
+        } else {
+            // No more songs
+            isPlaying = false;
+            isPaused = false;
+            ui->statusLabel->setText("Finished playback");
+            updateControls();
+        }
     }
 }
 
 void MainWindow::generationError(const QString &error)
 {
+    // Reset the generation flag on error
+    isGeneratingNext = false;
+    
     // Show detailed error in a dialog with QTextEdit
     QDialog dialog(this);
     dialog.setWindowTitle("Generation Error");
@@ -402,8 +460,8 @@ void MainWindow::generationError(const QString &error)
 
 void MainWindow::generationFinished()
 {
-    // This slot is declared but not used in the current implementation
-    // It's here for potential future use
+    // Reset the generation flag when a generation completes
+    isGeneratingNext = false;
 }
 
 void MainWindow::updatePlaybackStatus(bool playing)

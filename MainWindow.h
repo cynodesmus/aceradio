@@ -37,9 +37,13 @@ private slots:
     
     void songGenerated(const QString &filePath);
     void playNextSong();
+    void playbackStarted();
     void updatePlaybackStatus(bool playing);
     void generationFinished();
     void generationError(const QString &error);
+    
+private:
+    void startNextSongGeneration();
     
 private:
     Ui::MainWindow *ui;
@@ -54,6 +58,7 @@ private:
     bool isPlaying;
     bool isPaused;
     bool shuffleMode;
+    bool isGeneratingNext;
     QString jsonTemplate;
     
     // Path settings
@@ -62,6 +67,9 @@ private:
     QString textEncoderModelPath;
     QString ditModelPath;
     QString vaeModelPath;
+    
+    // Pre-generated song file path
+    QString nextSongFilePath;
     
     void loadSettings();
     void saveSettings();
