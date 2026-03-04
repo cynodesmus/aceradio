@@ -35,7 +35,7 @@
        </size>
       </property>
       <property name="editTriggers">
-       <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+       <set>QAbstractItemView::NoEditTriggers</set>
       </property>
      </widget>
     </item>
@@ -45,13 +45,6 @@
        <widget class="QPushButton" name="addSongButton">
         <property name="text">
          <string>Add Song</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="editSongButton">
-        <property name="text">
-         <string>Edit Song</string>
         </property>
        </widget>
       </item>

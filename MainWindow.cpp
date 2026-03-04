@@ -40,6 +40,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(aceStepWorker, &AceStepWorker::generationError, this, &MainWindow::generationError);
     connect(aceStepWorker, &AceStepWorker::progressUpdate, ui->progressBar, &QProgressBar::setValue);
     
+    // Connect double-click on song list for editing
+    connect(ui->songListView, &QListView::doubleClicked, this, &MainWindow::on_songListView_doubleClicked);
+    
     // Connect audio player error signal
     connect(audioPlayer, &AudioPlayer::playbackError, [this](const QString &error) {
         QMessageBox::warning(this, "Playback Error", "Failed to play audio: " + error);
@@ -56,6 +59,9 @@ void MainWindow::setupUI()
 {
     // Setup song list view
     ui->songListView->setModel(songModel);
+    
+    // Make sure the list view is read-only (no inline editing)
+    ui->songListView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     
     // Add some default songs
     SongItem defaultSong1("Upbeat pop rock anthem with driving electric guitars", "");
@@ -151,7 +157,6 @@ void MainWindow::updateControls()
     ui->skipButton->setEnabled(isPlaying);
     ui->stopButton->setEnabled(isPlaying);
     ui->addSongButton->setEnabled(true);
-    ui->editSongButton->setEnabled(hasSongs && ui->songListView->currentIndex().isValid());
     ui->removeSongButton->setEnabled(hasSongs && ui->songListView->currentIndex().isValid());
 }
 
@@ -240,12 +245,15 @@ void MainWindow::on_addSongButton_clicked()
     }
 }
 
-void MainWindow::on_editSongButton_clicked()
+void MainWindow::on_songListView_doubleClicked(const QModelIndex &index)
 {
-    QModelIndex currentIndex = ui->songListView->currentIndex();
-    if (!currentIndex.isValid()) return;
+    if (!index.isValid()) return;
     
-    int row = currentIndex.row();
+    // Temporarily disconnect the signal to prevent multiple invocations
+    // This happens when the dialog closes and triggers another double-click event
+    disconnect(ui->songListView, &QListView::doubleClicked, this, &MainWindow::on_songListView_doubleClicked);
+    
+    int row = index.row();
     SongItem song = songModel->getSong(row);
     
     SongDialog dialog(this, song.caption, song.lyrics);
@@ -258,6 +266,9 @@ void MainWindow::on_editSongButton_clicked()
         songModel->setData(songModel->index(row, 0), caption, SongListModel::CaptionRole);
         songModel->setData(songModel->index(row, 0), lyrics, SongListModel::LyricsRole);
     }
+    
+    // Reconnect the signal after dialog is closed
+    connect(ui->songListView, &QListView::doubleClicked, this, &MainWindow::on_songListView_doubleClicked);
 }
 
 void MainWindow::on_removeSongButton_clicked()

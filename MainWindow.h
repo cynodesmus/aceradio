@@ -31,9 +31,10 @@ private slots:
     void updatePosition(int position);
     void updateDuration(int duration);
     void on_addSongButton_clicked();
-    void on_editSongButton_clicked();
     void on_removeSongButton_clicked();
     void on_advancedSettingsButton_clicked();
+    
+    void on_songListView_doubleClicked(const QModelIndex &index);
     
     void songGenerated(const QString &filePath);
     void playNextSong();

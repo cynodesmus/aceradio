@@ -60,7 +60,8 @@ Qt::ItemFlags SongListModel::flags(const QModelIndex &index) const
     if (!index.isValid())
         return Qt::NoItemFlags;
     
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable;
+    // Remove ItemIsEditable to prevent inline editing and double-click issues
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 
 void SongListModel::addSong(const SongItem &song)
