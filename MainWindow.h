@@ -5,6 +5,9 @@
 #include <QListWidgetItem>
 #include <QStandardItemModel>
 #include <QTimer>
+#include <QQueue>
+#include <QPair>
+#include <cstdint>
 #include <QStandardPaths>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -40,11 +43,10 @@ private slots:
     
     void on_songListView_doubleClicked(const QModelIndex &index);
     
-    void songGenerated(const QString &filePath);
+	void songGenerated(const SongItem& song);
     void playNextSong();
     void playbackStarted();
-    void updatePlaybackStatus(bool playing);
-    void generationFinished();
+	void updatePlaybackStatus(bool playing);
     void generationError(const QString &error);
     
     void on_actionSavePlaylist();
@@ -61,8 +63,8 @@ private:
     QTimer *playbackTimer;
     
     QString formatTime(int milliseconds);
-    
-    int currentSongIndex;
+
+	SongItem currentSong;
     bool isPlaying;
     bool isPaused;
     bool shuffleMode;
@@ -76,25 +78,27 @@ private:
     QString ditModelPath;
     QString vaeModelPath;
     
-    // Pre-generated song file path
-    QString nextSongFilePath;
+    // Queue for generated songs
+	static constexpr int generationTresh = 2;
+	QQueue<SongItem> generatedSongQueue;
     
 private:
-    void highlightCurrentSong();
-    
     void loadSettings();
     void saveSettings();
     void loadPlaylist();
     void savePlaylist(const QString &filePath);
     void autoSavePlaylist();
     void autoLoadPlaylist();
+
+	void playSong(const SongItem& song);
     
     bool savePlaylistToJson(const QString &filePath, const QList<SongItem> &songs);
     bool loadPlaylistFromJson(const QString &filePath, QList<SongItem> &songs);
     
     void setupUI();
-    void updateControls();
-    void generateAndPlayNext();
+	void updateControls();
+	void ensureSongsInQueue(bool enqeueCurrent = false);
+    void flushGenerationQueue();
 };
 
 #endif // MAINWINDOW_H

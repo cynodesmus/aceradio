@@ -20,13 +20,15 @@ MainWindow::MainWindow(QWidget *parent)
       audioPlayer(new AudioPlayer(this)),
       aceStepWorker(new AceStepWorker(this)),
       playbackTimer(new QTimer(this)),
-      currentSongIndex(-1),
       isPlaying(false),
       isPaused(false),
       shuffleMode(false),
       isGeneratingNext(false)
 {
     ui->setupUi(this);
+    
+    // Setup lyrics display
+    ui->lyricsTextEdit->setReadOnly(true);
     
     // Setup UI
     setupUI();
@@ -44,6 +46,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionQuit, &QAction::triggered, this, [this](){close();});
     connect(audioPlayer, &AudioPlayer::playbackFinished, this, &MainWindow::playNextSong);
     connect(audioPlayer, &AudioPlayer::playbackStarted, this, &MainWindow::playbackStarted);
+	connect(audioPlayer, &AudioPlayer::positionChanged, this, &MainWindow::updatePosition);
+	connect(audioPlayer, &AudioPlayer::durationChanged, this, &MainWindow::updateDuration);
     connect(aceStepWorker, &AceStepWorker::songGenerated, this, &MainWindow::songGenerated);
     connect(aceStepWorker, &AceStepWorker::generationError, this, &MainWindow::generationError);
     connect(aceStepWorker, &AceStepWorker::progressUpdate, ui->progressBar, &QProgressBar::setValue);
@@ -55,6 +59,25 @@ MainWindow::MainWindow(QWidget *parent)
     connect(audioPlayer, &AudioPlayer::playbackError, [this](const QString &error) {
         QMessageBox::warning(this, "Playback Error", "Failed to play audio: " + error);
     });
+
+	// Add some default songs
+	if(songModel->songCount() == 0) {
+		SongItem defaultSong1("Upbeat pop rock anthem with driving electric guitars", "");
+		SongItem defaultSong2("Chill electronic music with smooth synths and relaxing beats", "");
+		SongItem defaultSong3("Jazz fusion with saxophone solos and complex rhythms", "");
+
+		songModel->addSong(defaultSong1);
+		songModel->addSong(defaultSong2);
+		songModel->addSong(defaultSong3);
+	}
+
+	// Select first item
+	if (songModel->rowCount() > 0) {
+		QModelIndex firstIndex = songModel->index(0, 0);
+		ui->songListView->setCurrentIndex(firstIndex);
+	}
+
+	currentSong = songModel->getSong(0);
 }
 
 MainWindow::~MainWindow()
@@ -84,21 +107,6 @@ void MainWindow::setupUI()
     
     // Enable row selection and disable column selection
     ui->songListView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    
-    // Add some default songs
-    SongItem defaultSong1("Upbeat pop rock anthem with driving electric guitars", "");
-    SongItem defaultSong2("Chill electronic music with smooth synths and relaxing beats", "");
-    SongItem defaultSong3("Jazz fusion with saxophone solos and complex rhythms", "");
-    
-    songModel->addSong(defaultSong1);
-    songModel->addSong(defaultSong2);
-    songModel->addSong(defaultSong3);
-    
-    // Select first item
-    if (songModel->rowCount() > 0) {
-        QModelIndex firstIndex = songModel->index(0, 0);
-        ui->songListView->setCurrentIndex(firstIndex);
-    }
 }
 
 void MainWindow::loadSettings()
@@ -141,7 +149,8 @@ void MainWindow::saveSettings()
 
 QString MainWindow::formatTime(int milliseconds)
 {
-    if (milliseconds < 0) return "0:00";
+    if (milliseconds < 0)
+        return "0:00";
     
     int seconds = milliseconds / 1000;
     int minutes = seconds / 60;
@@ -152,7 +161,8 @@ QString MainWindow::formatTime(int milliseconds)
 
 void MainWindow::updatePosition(int position)
 {
-    if (position < 0) return;
+	if (position < 0)
+		return;
     
     // Update slider and time labels
     ui->positionSlider->setValue(position);
@@ -161,7 +171,8 @@ void MainWindow::updatePosition(int position)
 
 void MainWindow::updateDuration(int duration)
 {
-    if (duration <= 0) return;
+	if (duration <= 0)
+		return;
     
     // Set slider range and update duration label
     ui->positionSlider->setRange(0, duration);
@@ -189,23 +200,13 @@ void MainWindow::on_playButton_clicked()
         isPaused = false;
         updateControls();
         return;
-    }
-    
-    if (isPlaying) {
-        audioPlayer->stop();
-        isPlaying = false;
-        isPaused = false;
-        updateControls();
-        return;
-    }
-    
-    // Start playback from current song or first song
-    int startIndex = ui->songListView->currentIndex().isValid() 
-                     ? ui->songListView->currentIndex().row() 
-                     : 0;
-    
-    currentSongIndex = startIndex;
-    generateAndPlayNext();
+	}
+
+	isPlaying = true;
+	ui->nowPlayingLabel->setText("Now Playing: Waiting for generation...");
+	flushGenerationQueue();
+	ensureSongsInQueue(true);
+	updateControls();
 }
 
 void MainWindow::on_pauseButton_clicked()
@@ -221,13 +222,9 @@ void MainWindow::on_pauseButton_clicked()
 void MainWindow::on_skipButton_clicked()
 {
     if (isPlaying) {
-        // Stop current playback and move to next song
         audioPlayer->stop();
         isPaused = false;
-        playNextSong();
-        
-        // After playing the skipped-to song, start generating the next one
-        // We'll do this in playNextSong by checking if we're already playing
+		playNextSong();
     }
 }
 
@@ -236,9 +233,11 @@ void MainWindow::on_stopButton_clicked()
     if (isPlaying) {
         // Stop current playback completely
         audioPlayer->stop();
+		ui->nowPlayingLabel->setText("Now Playing:");
         isPlaying = false;
         isPaused = false;
         updateControls();
+		flushGenerationQueue();
     }
 }
 
@@ -255,8 +254,10 @@ void MainWindow::on_addSongButton_clicked()
     if (dialog.exec() == QDialog::Accepted) {
         QString caption = dialog.getCaption();
         QString lyrics = dialog.getLyrics();
+        QString vocalLanguage = dialog.getVocalLanguage();
         
         SongItem newSong(caption, lyrics);
+        newSong.vocalLanguage = vocalLanguage;
         songModel->addSong(newSong);
         
         // Select the new item
@@ -282,22 +283,25 @@ void MainWindow::on_songListView_doubleClicked(const QModelIndex &index)
             audioPlayer->stop();
         }
         
-        // Set this as the current song and generate/play it
-        currentSongIndex = row;
-        generateAndPlayNext();
+        // Flush the generation queue when user selects a different song
+        flushGenerationQueue();
+		currentSong = songModel->getSong(row);
+		ensureSongsInQueue(true);
     } else if (index.column() == 1) {
         // Column 1 (caption): Edit the song
         SongItem song = songModel->getSong(row);
         
-        SongDialog dialog(this, song.caption, song.lyrics);
+        SongDialog dialog(this, song.caption, song.lyrics, song.vocalLanguage);
         
         if (dialog.exec() == QDialog::Accepted) {
             QString caption = dialog.getCaption();
             QString lyrics = dialog.getLyrics();
+            QString vocalLanguage = dialog.getVocalLanguage();
             
             // Update the model - use column 1 for the song name
             songModel->setData(songModel->index(row, 1), caption, SongListModel::CaptionRole);
             songModel->setData(songModel->index(row, 1), lyrics, SongListModel::LyricsRole);
+            songModel->setData(songModel->index(row, 1), vocalLanguage, SongListModel::VocalLanguageRole);
         }
     }
     
@@ -357,120 +361,52 @@ void MainWindow::on_advancedSettingsButton_clicked()
     }
 }
 
-void MainWindow::generateAndPlayNext()
-{
-    if (currentSongIndex < 0 || currentSongIndex >= songModel->rowCount()) {
-        return;
-    }
-    
-    SongItem song = songModel->getSong(currentSongIndex);
-    
-    // Show status
-    ui->statusLabel->setText("Generating: " + song.caption);
-    isPlaying = true;
-    isGeneratingNext = false; // Reset the flag when starting a new generation
-    updateControls();
-    
-    // Generate the song with configurable paths
-    aceStepWorker->generateSong(song.caption, song.lyrics, jsonTemplate,
-                               aceStepPath, qwen3ModelPath,
-                               textEncoderModelPath, ditModelPath,
-                               vaeModelPath);
-}
-
-void MainWindow::startNextSongGeneration()
-{
-    // Start generating the next song if we're playing and not already generating
-    if (isPlaying && !isGeneratingNext) {
-        isGeneratingNext = true;
-        
-        // Find and generate the next song
-        int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
-        if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
-            SongItem nextSong = songModel->getSong(nextIndex);
-            
-            // Generate the next song in the background
-            aceStepWorker->generateSong(nextSong.caption, nextSong.lyrics, jsonTemplate,
-                                       aceStepPath, qwen3ModelPath,
-                                       textEncoderModelPath, ditModelPath,
-                                       vaeModelPath);
-        }
-    }
-}
-
 void MainWindow::playbackStarted()
 {
-    // When playback starts, immediately start generating the next song
-    startNextSongGeneration();
+    ensureSongsInQueue();
 }
 
-void MainWindow::highlightCurrentSong()
+void MainWindow::playSong(const SongItem& song)
 {
-    if (currentSongIndex >= 0 && currentSongIndex < songModel->rowCount()) {
-        // Update the model to show play icon for current song
-        songModel->setPlayingIndex(currentSongIndex);
-    }
+	currentSong = song;
+	audioPlayer->play(song.file);
+	songModel->setPlayingIndex(songModel->findSongIndexById(song.uniqueId));
+	ui->nowPlayingLabel->setText("Now Playing: " + song.caption);
+    
+    // Update lyrics display
+    ui->lyricsTextEdit->setPlainText(song.lyrics);
 }
 
-void MainWindow::songGenerated(const QString &filePath)
+void MainWindow::songGenerated(const SongItem& song)
 {
-    if (!QFile::exists(filePath)) {
-        generationError("Generated file not found: " + filePath);
-        return;
-    }
-    
-    // If we're in the middle of playback, this is a pre-generated next song
-    if (isPlaying && audioPlayer->isPlaying()) {
-        // Store the generated file path for when playback finishes
-        nextSongFilePath = filePath;
-        return;
-    }
-    
-    ui->statusLabel->setText("");
-    
-    // Play the generated song
-    audioPlayer->play(filePath);
-    
-    // Highlight the current song in the list
-    highlightCurrentSong();
-    
-    // Connect position and duration updates for the slider
-    connect(audioPlayer, &AudioPlayer::positionChanged, this, &MainWindow::updatePosition);
-    connect(audioPlayer, &AudioPlayer::durationChanged, this, &MainWindow::updateDuration);
+    isGeneratingNext = false;
+
+	if (!isPaused && isPlaying && !audioPlayer->isPlaying()) {
+		playSong(song);
+	}
+	else {
+		generatedSongQueue.enqueue(song);
+	}
+	ui->statusLabel->setText("idle");
+
+	ensureSongsInQueue();
 }
 
 void MainWindow::playNextSong()
 {
-    if (!isPlaying) return;
+	if (!isPlaying)
+		return;
+
+    // Check if we have a pre-generated next song in the queue
+    if (!generatedSongQueue.isEmpty()) {
+		SongItem generatedSong = generatedSongQueue.dequeue();
+		playSong(generatedSong);
+	} else {
+		ui->nowPlayingLabel->setText("Now Playing: Waiting for generation...");
+	}
     
-    // Check if we have a pre-generated next song
-    if (!nextSongFilePath.isEmpty()) {
-        audioPlayer->play(nextSongFilePath);
-        nextSongFilePath.clear();
-        
-        // Update current index to the next song
-        int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
-        if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
-            currentSongIndex = nextIndex;
-        }
-        
-        // Highlight the current song and start generating the next one
-        highlightCurrentSong();
-        startNextSongGeneration();
-    } else {
-        // Find next song index and generate it
-        int nextIndex = songModel->findNextIndex(currentSongIndex, shuffleMode);
-        
-        if (nextIndex >= 0 && nextIndex < songModel->rowCount()) {
-            currentSongIndex = nextIndex;
-            generateAndPlayNext();
-        } else {
-            // No more songs
-            isPlaying = false;
-            isPaused = false;
-            updateControls();
-        }
-    }
+    // Ensure we have songs in the queue for smooth playback
+    ensureSongsInQueue();
 }
 
 void MainWindow::generationError(const QString &error)
@@ -508,12 +444,6 @@ void MainWindow::generationError(const QString &error)
     updateControls();
 }
 
-void MainWindow::generationFinished()
-{
-    // Reset the generation flag when a generation completes
-    isGeneratingNext = false;
-}
-
 void MainWindow::updatePlaybackStatus(bool playing)
 {
     isPlaying = playing;
@@ -522,10 +452,50 @@ void MainWindow::updatePlaybackStatus(bool playing)
 
 void MainWindow::on_positionSlider_sliderMoved(int position)
 {
-    if (isPlaying && audioPlayer->isPlaying()) {
-        // Seek to the new position when slider is moved
+	if (isPlaying && audioPlayer->isPlaying()) {
         audioPlayer->setPosition(position);
     }
+}
+
+void MainWindow::ensureSongsInQueue(bool enqeueCurrent)
+{
+    // Only generate more songs if we're playing and not already at capacity
+	if (!isPlaying || isGeneratingNext || generatedSongQueue.size() >= generationTresh) {
+        return;
+    }
+
+	SongItem lastSong;
+	SongItem workerSong;
+	if(aceStepWorker->songGenerateing(&workerSong))
+		lastSong = workerSong;
+	else if(!generatedSongQueue.empty())
+		lastSong = generatedSongQueue.last();
+	else
+		lastSong = currentSong;
+
+	SongItem nextSong;
+	if(enqeueCurrent) {
+		nextSong = lastSong;
+	}
+	else {
+		int nextIndex = songModel->findNextIndex(songModel->findSongIndexById(lastSong.uniqueId), shuffleMode);
+		nextSong = songModel->getSong(nextIndex);
+	}
+
+    isGeneratingNext = true;
+
+	ui->statusLabel->setText("Generateing: "+nextSong.caption);
+    aceStepWorker->generateSong(nextSong, jsonTemplate,
+                                aceStepPath, qwen3ModelPath,
+                                textEncoderModelPath, ditModelPath,
+                                vaeModelPath);
+}
+
+void MainWindow::flushGenerationQueue()
+{
+    generatedSongQueue.clear();
+	aceStepWorker->cancelGeneration();
+    isGeneratingNext = false;
 }
 
 // Playlist save/load methods
@@ -633,6 +603,8 @@ bool MainWindow::savePlaylistToJson(const QString &filePath, const QList<SongIte
         QJsonObject songObj;
         songObj["caption"] = song.caption;
         songObj["lyrics"] = song.lyrics;
+        songObj["vocalLanguage"] = song.vocalLanguage;
+        songObj["uniqueId"] = static_cast<qint64>(song.uniqueId); // Store as qint64 for JSON compatibility
         songsArray.append(songObj);
     }
     
@@ -706,6 +678,19 @@ bool MainWindow::loadPlaylistFromJson(const QString &filePath, QList<SongItem> &
         
         if (songObj.contains("lyrics")) {
             song.lyrics = songObj["lyrics"].toString();
+        }
+        
+        // Load vocalLanguage if present
+        if (songObj.contains("vocalLanguage")) {
+            song.vocalLanguage = songObj["vocalLanguage"].toString();
+        }
+        
+        // Load uniqueId if present (for backward compatibility)
+        if (songObj.contains("uniqueId")) {
+            song.uniqueId = static_cast<uint64_t>(songObj["uniqueId"].toInteger());
+        } else {
+            // Generate new ID for old playlists without uniqueId
+            song.uniqueId = QRandomGenerator::global()->generate64();
         }
         
         songs.append(song);

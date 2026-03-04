@@ -55,6 +55,23 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="vocalLanguageLabel">
+     <property name="text">
+      <string>Vocal Language:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignTop</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="vocalLanguageCombo">
+     <property name="editable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="buttonLayout">
      <item>
       <spacer name="horizontalSpacer">

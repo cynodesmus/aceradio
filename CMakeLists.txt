@@ -17,13 +17,20 @@ add_executable(${PROJECT_NAME}
     main.cpp
     MainWindow.ui
     MainWindow.cpp
+    MainWindow.h
     AdvancedSettingsDialog.ui
     AdvancedSettingsDialog.cpp
+    AdvancedSettingsDialog.h
     SongDialog.ui
     SongDialog.cpp
+    SongDialog.h
     SongListModel.cpp
+    SongListModel.h
     AudioPlayer.cpp
+    AudioPlayer.h
     AceStepWorker.cpp
+    AceStepWorker.h
+    SongItem.h
     ${MusicGeneratorGUI_H}
 )
 

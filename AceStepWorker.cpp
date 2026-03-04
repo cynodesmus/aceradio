@@ -21,7 +21,7 @@ AceStepWorker::~AceStepWorker()
     cancelGeneration();
 }
 
-void AceStepWorker::generateSong(const QString &caption, const QString &lyrics, const QString &jsonTemplate,
+void AceStepWorker::generateSong(const SongItem& song, const QString &jsonTemplate,
                                 const QString &aceStepPath, const QString &qwen3ModelPath,
                                 const QString &textEncoderModelPath, const QString &ditModelPath,
                                 const QString &vaeModelPath)
@@ -30,21 +30,31 @@ void AceStepWorker::generateSong(const QString &caption, const QString &lyrics, 
     cancelGeneration();
     
     // Create worker and start it
-    currentWorker = new Worker(this, caption, lyrics, jsonTemplate, aceStepPath, qwen3ModelPath,
+    currentWorker = new Worker(this, song, jsonTemplate, aceStepPath, qwen3ModelPath,
                                textEncoderModelPath, ditModelPath, vaeModelPath);
+	currentWorker->setAutoDelete(true);
     QThreadPool::globalInstance()->start(currentWorker);
 }
 
 void AceStepWorker::cancelGeneration()
 {
-    // Note: In a real implementation, we would need to implement proper cancellation
-    // For now, we just clear the reference
     currentWorker = nullptr;
 }
 
-void AceStepWorker::workerFinished()
+bool AceStepWorker::songGenerateing(SongItem* song)
 {
-    emit generationFinished();
+	workerMutex.lock();
+	if(!currentWorker) {
+		workerMutex.unlock();
+		return false;
+	}
+	else {
+		SongItem workerSong = currentWorker->getSong();
+		workerMutex.unlock();
+		if(song)
+			*song = workerSong;
+		return true;
+	}
 }
 
 // Worker implementation
@@ -64,13 +74,18 @@ void AceStepWorker::Worker::run()
     }
     
     QJsonObject requestObj = templateDoc.object();
-    requestObj["caption"] = caption;
+	requestObj["caption"] = song.caption;
     
-    if (!lyrics.isEmpty()) {
-        requestObj["lyrics"] = lyrics;
+	if (!song.lyrics.isEmpty()) {
+		requestObj["lyrics"] = song.lyrics;
     } else {
         // Remove lyrics field if empty to let the LLM generate them
         requestObj.remove("lyrics");
+    }
+    
+    // Apply vocal language override if set
+    if (!song.vocalLanguage.isEmpty()) {
+        requestObj["vocal_language"] = song.vocalLanguage;
     }
     
     // Write the request file
@@ -161,6 +176,21 @@ void AceStepWorker::Worker::run()
         return;
     }
     
+    // Load lyrics from the enhanced request file
+    QFile lmOutputFile(requestLmOutputFile);
+    if (lmOutputFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(lmOutputFile.readAll(), &parseError);
+        lmOutputFile.close();
+        
+        if (doc.isObject() && !parseError.error) {
+            QJsonObject obj = doc.object();
+            if (obj.contains("lyrics") && obj["lyrics"].isString()) {
+                song.lyrics = obj["lyrics"].toString();
+            }
+        }
+    }
+    
     emit parent->progressUpdate(50);
     
     // Step 2: Run dit-vae to generate audio
@@ -207,5 +237,14 @@ void AceStepWorker::Worker::run()
     QFile::remove(requestFile);
     
     emit parent->progressUpdate(100);
-    emit parent->songGenerated(wavFile);
+    song.file = wavFile;
+    emit parent->songGenerated(song);
+	parent->workerMutex.lock();
+	parent->currentWorker = nullptr;
+	parent->workerMutex.unlock();
+}
+
+const SongItem& AceStepWorker::Worker::getSong()
+{
+	return song;
 }

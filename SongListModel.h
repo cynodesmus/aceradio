@@ -4,15 +4,10 @@
 #include <QAbstractListModel>
 #include <QList>
 #include <QString>
+#include <QRandomGenerator>
+#include <cstdint>
 
-class SongItem {
-public:
-    QString caption;
-    QString lyrics;
-    
-    SongItem(const QString &caption = "", const QString &lyrics = "")
-        : caption(caption), lyrics(lyrics) {}
-};
+#include "SongItem.h"
 
 class SongListModel : public QAbstractTableModel
 {
@@ -22,7 +17,8 @@ public:
     enum Roles {
         CaptionRole = Qt::UserRole + 1,
         LyricsRole = Qt::UserRole + 2,
-        IsPlayingRole = Qt::UserRole + 3
+        VocalLanguageRole = Qt::UserRole + 3,
+        IsPlayingRole = Qt::UserRole + 4
     };
     
     explicit SongListModel(QObject *parent = nullptr);
@@ -46,6 +42,10 @@ public:
     // Playing indicator
     void setPlayingIndex(int index);
     int playingIndex() const { return m_playingIndex; }
+    
+    // Find song by unique ID
+    int findSongIndexById(uint64_t uniqueId) const;
+		int songCount();
     
 private:
     QList<SongItem> songList;

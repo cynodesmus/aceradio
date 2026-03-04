@@ -4,6 +4,7 @@
 #include <QRandomGenerator>
 #include <QDebug>
 #include <QFont>
+#include <QUuid>
 
 SongListModel::SongListModel(QObject *parent)
     : QAbstractTableModel(parent),
@@ -20,8 +21,8 @@ int SongListModel::rowCount(const QModelIndex &parent) const
 
 int SongListModel::columnCount(const QModelIndex &parent) const
 {
-    // We have 2 columns: play indicator and song name
-    return 2;
+    // We have 3 columns: play indicator, song name, and vocal language (read-only)
+    return 3;
 }
 
 QVariant SongListModel::data(const QModelIndex &index, int role) const
@@ -40,6 +41,10 @@ QVariant SongListModel::data(const QModelIndex &index, int role) const
         // Column 1: Song name
         else if (index.column() == 1) {
             return song.caption;
+        }
+        // Column 2: Vocal language
+        else if (index.column() == 2) {
+            return !song.vocalLanguage.isEmpty() ? song.vocalLanguage : "--";
         }
         break;
     case Qt::FontRole:
@@ -60,6 +65,8 @@ QVariant SongListModel::data(const QModelIndex &index, int role) const
         return song.caption;
     case LyricsRole:
         return song.lyrics;
+    case VocalLanguageRole:
+        return song.vocalLanguage;
     case IsPlayingRole:
         return index.row() == m_playingIndex;
     default:
@@ -82,6 +89,9 @@ bool SongListModel::setData(const QModelIndex &index, const QVariant &value, int
         break;
     case LyricsRole:
         song.lyrics = value.toString();
+        break;
+    case VocalLanguageRole:
+        song.vocalLanguage = value.toString();
         break;
     default:
         return false;
@@ -148,6 +158,11 @@ void SongListModel::setPlayingIndex(int index)
     }
 }
 
+int SongListModel::songCount()
+{
+	return songList.count();
+}
+
 int SongListModel::findNextIndex(int currentIndex, bool shuffle) const
 {
     if (songList.isEmpty())
@@ -166,4 +181,14 @@ int SongListModel::findNextIndex(int currentIndex, bool shuffle) const
     }
     
     return nextIndex;
+}
+
+int SongListModel::findSongIndexById(uint64_t uniqueId) const
+{
+    for (int i = 0; i < songList.size(); ++i) {
+        if (songList[i].uniqueId == uniqueId) {
+            return i;
+        }
+    }
+    return -1; // Song not found
 }
