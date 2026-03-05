@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Aceradio
+Comment=A C++ Qt graphical user interface for generating music using acestep.cpp
+Exec=aceradio
+Icon=xyz.uvos.aceradio
+Terminal=false
+Categories=Audio;Music;AudioVideo;Player;
+StartupWMClass=Aceradio
