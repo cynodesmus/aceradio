@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Aceradio</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="../res/resources.qrc">
+    <normaloff>:/icons/xyz.uvos.aceradio.png</normaloff>:/icons/xyz.uvos.aceradio.png</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
@@ -345,9 +349,11 @@
   <customwidget>
    <class>ClickableSlider</class>
    <extends>QWidget</extends>
-   <header>clickableslider.h</header>
+   <header>src/clickableslider.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../res/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

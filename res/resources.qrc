@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>xyz.uvos.aceradio.png</file>
+    </qresource>
+</RCC>

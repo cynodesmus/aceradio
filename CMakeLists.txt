@@ -11,6 +11,7 @@ find_package(Qt6 COMPONENTS Core Gui Widgets Multimedia REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 
 # Add executable
 add_executable(${PROJECT_NAME}
@@ -34,6 +35,7 @@ add_executable(${PROJECT_NAME}
     src/clickableslider.h
     src/clickableslider.cpp
     ${MusicGeneratorGUI_H}
+    res/resources.qrc
 )
 
 # UI file
