@@ -1,6 +1,6 @@
 # Aceradio
 
-![Screenshot](res/scot.png)
+![Screenshot](res/scrot.png)
 
 A C++ Qt graphical user interface for generating music using acestep.cpp.
 
