@@ -1,109 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ui version="4.0">
- <class>SongDialog</class>
- <widget class="QDialog" name="SongDialog">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>500</width>
-    <height>400</height>
-   </rect>
-  </property>
-  <property name="windowTitle">
-   <string>Song Details</string>
-  </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <widget class="QLabel" name="captionLabel">
-     <property name="text">
-      <string>Caption:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignTop</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QTextEdit" name="captionEdit">
-     <property name="placeholderText">
-      <string>Enter song caption (e.g., "Upbeat pop rock anthem with driving electric guitars")</string>
-     </property>
-     <property name="maximumHeight">
-      <number>80</number>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="lyricsLabel">
-     <property name="text">
-      <string>Lyrics (optional):</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignTop</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QTextEdit" name="lyricsEdit">
-     <property name="placeholderText">
-      <string>Enter lyrics or leave empty for instrumental music</string>
-     </property>
-     <property name="minimumHeight">
-      <number>150</number>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="vocalLanguageLabel">
-     <property name="text">
-      <string>Vocal Language:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignTop</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QComboBox" name="vocalLanguageCombo">
-     <property name="editable">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="buttonLayout">
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="okButton">
-       <property name="text">
-        <string>OK</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="cancelButton">
-       <property name="text">
-        <string>Cancel</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-  </layout>
- </widget>
- <resources/>
- <connections/>
-</ui>
+                             <ui version="4.0">
+                                 <class>SongDialog</class>
+		<widget class="QDialog" name="SongDialog">
+			                                     <property name="geometry">
+			                                         <rect>
+			                                         <x>0</x>
+			                                         <y>0</y>
+			                                         <width>500</width>
+			                                         <height>400</height>
+			                                         </rect>
+			                                         </property>
+			                                         <property name="windowTitle">
+			                                             <string>Song Details</string>
+			                                             </property>
+			<layout class="QVBoxLayout" name="verticalLayout">
+				                                                 <item>
+				<widget class="QLabel" name="captionLabel">
+					                                                     <property name="text">
+					                                                         <string>Caption:</string>
+					                                                         </property>
+					                                                         <property name="alignment">
+					                                                             <set>Qt::AlignTop</set>
+					                                                             </property>
+					                                                             </widget>
+					                                                             </item>
+					                                                             <item>
+					<widget class="QTextEdit" name="captionEdit">
+						                                                                 <property name="placeholderText">
+						                                                                     <string>Enter song caption (e.g., "Upbeat pop rock anthem with driving electric guitars")</string>
+						                                                                     </property>
+						                                                                     <property name="maximumHeight">
+						                                                                         <number>80</number>
+						                                                                         </property>
+						                                                                         </widget>
+						                                                                         </item>
+						                                                                         <item>
+						<widget class="QLabel" name="lyricsLabel">
+							                                                                             <property name="text">
+							                                                                                 <string>Lyrics (optional):</string>
+							                                                                                 </property>
+							                                                                                 <property name="alignment">
+							                                                                                     <set>Qt::AlignTop</set>
+							                                                                                     </property>
+							                                                                                     </widget>
+							                                                                                     </item>
+							                                                                                     <item>
+							<widget class="QTextEdit" name="lyricsEdit">
+								                                                                                         <property name="placeholderText">
+								                                                                                             <string>Enter lyrics or leave empty for instrumental music</string>
+								                                                                                             </property>
+								                                                                                             <property name="minimumHeight">
+								                                                                                                 <number>150</number>
+								                                                                                                 </property>
+								                                                                                                 </widget>
+								                                                                                                 </item>
+								                                                                                                 <item>
+								<widget class="QLabel" name="vocalLanguageLabel">
+									                                                                                                     <property name="text">
+									                                                                                                         <string>Vocal Language:</string>
+									                                                                                                         </property>
+									                                                                                                         <property name="alignment">
+									                                                                                                             <set>Qt::AlignTop</set>
+									                                                                                                             </property>
+									                                                                                                             </widget>
+									                                                                                                             </item>
+									                                                                                                             <item>
+									<widget class="QComboBox" name="vocalLanguageCombo">
+										                                                                                                                 <property name="editable">
+										                                                                                                                     <bool>true</bool>
+										                                                                                                                     </property>
+										                                                                                                                     </widget>
+										                                                                                                                     </item>
+										                                                                                                                     <item>
+										<layout class="QHBoxLayout" name="buttonLayout">
+											                                                                                                                         <item>
+											                                                                                                                         <spacer name="horizontalSpacer">
+											                                                                                                                             <property name="orientation">
+											                                                                                                                                 <enum>Qt::Horizontal</enum>
+											                                                                                                                                 </property>
+											<property name="sizeHint" stdset="0">
+											                                                                                                                                     <size>
+											                                                                                                                                     <width>40</width>
+											                                                                                                                                     <height>20</height>
+											                                                                                                                                     </size>
+											                                                                                                                                     </property>
+											                                                                                                                                     </spacer>
+											                                                                                                                                     </item>
+											                                                                                                                                     <item>
+											<widget class="QPushButton" name="okButton">
+											                                                                                                                                         <property name="text">
+											                                                                                                                                             <string>OK</string>
+											                                                                                                                                             </property>
+											                                                                                                                                             </widget>
+											                                                                                                                                             </item>
+											                                                                                                                                             <item>
+											<widget class="QPushButton" name="cancelButton">
+											                                                                                                                                                 <property name="text">
+											                                                                                                                                                     <string>Cancel</string>
+											                                                                                                                                                     </property>
+											                                                                                                                                                     </widget>
+											                                                                                                                                                     </item>
+											                                                                                                                                                     </layout>
+											                                                                                                                                                     </item>
+											                                                                                                                                                     </layout>
+											                                                                                                                                                     </widget>
+											                                                                                                                                                     <resources/>
+											                                                                                                                                                     <connections/>
+											                                                                                                                                                     </ui>

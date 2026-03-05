@@ -3,18 +3,20 @@
 #include <QRandomGenerator>
 #include <cstdint>
 
-class SongItem {
+class SongItem
+{
 public:
-    QString caption;
-    QString lyrics;
-    uint64_t uniqueId;
-    QString file;
-    QString vocalLanguage;
-    QString json;
+	QString caption;
+	QString lyrics;
+	uint64_t uniqueId;
+	QString file;
+	QString vocalLanguage;
+	QString json;
 
-    inline SongItem(const QString &caption = "", const QString &lyrics = "")
-        : caption(caption), lyrics(lyrics) {
-        // Generate a unique ID using cryptographically secure random number
-        uniqueId = QRandomGenerator::global()->generate64();
-    }
+	inline SongItem(const QString &caption = "", const QString &lyrics = "")
+		: caption(caption), lyrics(lyrics)
+	{
+		// Generate a unique ID using cryptographically secure random number
+		uniqueId = QRandomGenerator::global()->generate64();
+	}
 };

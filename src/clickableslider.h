@@ -7,16 +7,16 @@
 
 class ClickableSlider : public QSlider
 {
-    Q_OBJECT
+	Q_OBJECT
 public:
-    explicit ClickableSlider(QWidget *parent = nullptr);
-    explicit ClickableSlider(Qt::Orientation orientation, QWidget *parent = nullptr);
-    
+	explicit ClickableSlider(QWidget *parent = nullptr);
+	explicit ClickableSlider(Qt::Orientation orientation, QWidget *parent = nullptr);
+
 protected:
-    void mousePressEvent(QMouseEvent *event) override;
-    
+	void mousePressEvent(QMouseEvent *event) override;
+
 private:
-    int pixelPosToRangeValue(const QPoint &pos);
+	int pixelPosToRangeValue(const QPoint &pos);
 };
 
 #endif // CLICKABLESLIDER_H

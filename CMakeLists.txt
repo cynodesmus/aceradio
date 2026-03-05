@@ -55,3 +55,13 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 # Note: acestep.cpp binaries (ace-qwen3, dit-vae) and models should be provided at runtime
+
+# Install targets
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+
+# Install .desktop file
+install(FILES aceradio.desktop DESTINATION share/applications)
+
+# Install icon files
+install(FILES res/xyz.uvos.aceradio.png DESTINATION share/icons/hicolor/256x256/apps RENAME xyz.uvos.aceradio.png)
+install(FILES res/xyz.uvos.aceradio.svg DESTINATION share/icons/hicolor/scalable/apps RENAME xyz.uvos.aceradio.svg)
