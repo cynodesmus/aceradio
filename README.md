@@ -33,6 +33,6 @@ cmake ..
 make -j$(nproc)
 ```
 
-### Build the GUI:
+### Setup Paths:
 
 Go to settings->Ace Step->Model Paths and add the paths to the acestep.cpp binaries the models.
