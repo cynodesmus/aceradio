@@ -89,6 +89,8 @@ MainWindow::MainWindow(QWidget *parent)
 		ui->songListView->setCurrentIndex(firstIndex);
 	}
 
+	ui->nowPlayingLabel->setText("Now Playing:");
+
 	currentSong = songModel->getSong(0);
 }
 
@@ -426,7 +428,7 @@ void MainWindow::songGenerated(const SongItem& song)
 	{
 		generatedSongQueue.enqueue(song);
 	}
-	ui->statusLabel->setText("idle");
+	ui->statusbar->showMessage("idle");
 
 	ensureSongsInQueue();
 }
@@ -530,7 +532,7 @@ void MainWindow::ensureSongsInQueue(bool enqeueCurrent)
 
 	isGeneratingNext = true;
 
-	ui->statusLabel->setText("Generateing: "+nextSong.caption);
+	ui->statusbar->showMessage("Generateing: "+nextSong.caption);
 	aceStepWorker->generateSong(nextSong, jsonTemplate,
 	                            aceStepPath, qwen3ModelPath,
 	                            textEncoderModelPath, ditModelPath,

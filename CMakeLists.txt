@@ -36,6 +36,7 @@ add_executable(${PROJECT_NAME}
     src/clickableslider.cpp
     ${MusicGeneratorGUI_H}
     res/resources.qrc
+    src/elidedlabel.h src/elidedlabel.cpp
 )
 
 # UI file
