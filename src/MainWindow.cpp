@@ -296,16 +296,12 @@ void MainWindow::on_songListView_doubleClicked(const QModelIndex &index)
 	if (!index.isValid())
 		return;
 
-	// Temporarily disconnect the signal to prevent multiple invocations
-	// This happens when the dialog closes and triggers another double-click event
 	disconnect(ui->songListView, &QTableView::doubleClicked, this, &MainWindow::on_songListView_doubleClicked);
 
 	int row = index.row();
 
-	// Different behavior based on which column was clicked
 	if (index.column() == 0)
 	{
-		// Column 0 (play indicator): Stop current playback and play this song
 		if (isPlaying)
 		{
 			audioPlayer->stop();
@@ -316,14 +312,13 @@ void MainWindow::on_songListView_doubleClicked(const QModelIndex &index)
 			updateControls();
 		}
 
-		// Flush the generation queue when user selects a different song
 		flushGenerationQueue();
+		ui->nowPlayingLabel->setText("Now Playing: Waiting for generation...");
 		currentSong = songModel->getSong(row);
 		ensureSongsInQueue(true);
 	}
 	else if (index.column() == 1 || index.column() == 2)
 	{
-		// Column 1 (caption): Edit the song
 		SongItem song = songModel->getSong(row);
 
 		SongDialog dialog(this, song.caption, song.lyrics, song.vocalLanguage);
@@ -334,14 +329,12 @@ void MainWindow::on_songListView_doubleClicked(const QModelIndex &index)
 			QString lyrics = dialog.getLyrics();
 			QString vocalLanguage = dialog.getVocalLanguage();
 
-			// Update the model - use column 1 for the song name
 			songModel->setData(songModel->index(row, 1), caption, SongListModel::CaptionRole);
 			songModel->setData(songModel->index(row, 1), lyrics, SongListModel::LyricsRole);
 			songModel->setData(songModel->index(row, 1), vocalLanguage, SongListModel::VocalLanguageRole);
 		}
 	}
 
-	// Reconnect the signal after dialog is closed
 	connect(ui->songListView, &QTableView::doubleClicked, this, &MainWindow::on_songListView_doubleClicked);
 }
 
