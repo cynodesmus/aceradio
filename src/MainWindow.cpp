@@ -18,13 +18,15 @@ MainWindow::MainWindow(QWidget *parent)
 	  ui(new Ui::MainWindow),
 	  songModel(new SongListModel(this)),
 	  audioPlayer(new AudioPlayer(this)),
-	  aceStepWorker(new AceStepWorker(this)),
+	  aceStep(new AceStep(this)),
 	  playbackTimer(new QTimer(this)),
 	  isPlaying(false),
 	  isPaused(false),
 	  shuffleMode(false),
 	  isGeneratingNext(false)
 {
+	aceStep->moveToThread(&aceThread);
+
 	ui->setupUi(this);
 
 	// Setup lyrics display
@@ -57,9 +59,10 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(audioPlayer, &AudioPlayer::playbackStarted, this, &MainWindow::playbackStarted);
 	connect(audioPlayer, &AudioPlayer::positionChanged, this, &MainWindow::updatePosition);
 	connect(audioPlayer, &AudioPlayer::durationChanged, this, &MainWindow::updateDuration);
-	connect(aceStepWorker, &AceStepWorker::songGenerated, this, &MainWindow::songGenerated);
-	connect(aceStepWorker, &AceStepWorker::generationError, this, &MainWindow::generationError);
-	connect(aceStepWorker, &AceStepWorker::progressUpdate, ui->progressBar, &QProgressBar::setValue);
+	connect(aceStep, &AceStep::songGenerated, this, &MainWindow::songGenerated);
+	connect(aceStep, &AceStep::generationCancled, this, &MainWindow::generationCanceld);
+	connect(aceStep, &AceStep::generationError, this, &MainWindow::generationError);
+	connect(aceStep, &AceStep::progressUpdate, ui->progressBar, &QProgressBar::setValue);
 
 	// Connect double-click on song list for editing (works with QTableView too)
 	connect(ui->songListView, &QTableView::doubleClicked, this, &MainWindow::on_songListView_doubleClicked);
@@ -269,6 +272,10 @@ void MainWindow::on_shuffleButton_clicked()
 {
 	shuffleMode = ui->shuffleButton->isChecked();
 	updateControls();
+
+	flushGenerationQueue();
+	if(isPlaying)
+		ensureSongsInQueue();
 }
 
 void MainWindow::on_addSongButton_clicked()
@@ -426,6 +433,11 @@ void MainWindow::songGenerated(const SongItem& song)
 	ensureSongsInQueue();
 }
 
+void MainWindow::generationCanceld(const SongItem& song)
+{
+	ui->statusbar->showMessage("Geneartion cancled: " + song.caption);
+}
+
 void MainWindow::playNextSong()
 {
 	if (!isPlaying)
@@ -505,7 +517,7 @@ void MainWindow::ensureSongsInQueue(bool enqeueCurrent)
 
 	SongItem lastSong;
 	SongItem workerSong;
-	if(aceStepWorker->songGenerateing(&workerSong))
+	if(aceStep->isGenerateing(&workerSong))
 		lastSong = workerSong;
 	else if(!generatedSongQueue.empty())
 		lastSong = generatedSongQueue.last();
@@ -526,7 +538,7 @@ void MainWindow::ensureSongsInQueue(bool enqeueCurrent)
 	isGeneratingNext = true;
 
 	ui->statusbar->showMessage("Generateing: "+nextSong.caption);
-	aceStepWorker->generateSong(nextSong, jsonTemplate,
+	aceStep->requestGeneration(nextSong, jsonTemplate,
 	                            aceStepPath, qwen3ModelPath,
 	                            textEncoderModelPath, ditModelPath,
 	                            vaeModelPath);
@@ -535,7 +547,7 @@ void MainWindow::ensureSongsInQueue(bool enqeueCurrent)
 void MainWindow::flushGenerationQueue()
 {
 	generatedSongQueue.clear();
-	aceStepWorker->cancelGeneration();
+	aceStep->cancleGenerateion();
 	isGeneratingNext = false;
 }
 

@@ -8,269 +8,205 @@
 #include <QDebug>
 #include <QCoreApplication>
 #include <QRandomGenerator>
-#include <cstdint>
 
-AceStepWorker::AceStepWorker(QObject *parent)
-	: QObject(parent),
-	  currentWorker(nullptr)
+AceStep::AceStep(QObject* parent): QObject(parent)
 {
+	connect(&qwenProcess, &QProcess::finished, this, &AceStep::qwenProcFinished);
+	connect(&ditVaeProcess, &QProcess::finished, this, &AceStep::ditProcFinished);
 }
 
-AceStepWorker::~AceStepWorker()
+bool AceStep::isGenerateing(SongItem* song)
 {
-	cancelGeneration();
+	if(!busy && song)
+		*song = this->request.song;
+	return busy;
 }
 
-void AceStepWorker::generateSong(const SongItem& song, const QString &jsonTemplate,
-                                 const QString &aceStepPath, const QString &qwen3ModelPath,
-                                 const QString &textEncoderModelPath, const QString &ditModelPath,
-                                 const QString &vaeModelPath)
+void AceStep::cancleGenerateion()
 {
-	// Cancel any ongoing generation
-	cancelGeneration();
+	qwenProcess.blockSignals(true);
+	qwenProcess.terminate();
+	qwenProcess.waitForFinished();
+	qwenProcess.blockSignals(false);
 
-	// Create worker and start it
-	currentWorker = new Worker(this, song, jsonTemplate, aceStepPath, qwen3ModelPath,
-	                           textEncoderModelPath, ditModelPath, vaeModelPath);
-	currentWorker->setAutoDelete(true);
-	QThreadPool::globalInstance()->start(currentWorker);
+	ditVaeProcess.blockSignals(true);
+	ditVaeProcess.terminate();
+	ditVaeProcess.waitForFinished();
+	ditVaeProcess.blockSignals(false);
+
+	progressUpdate(100);
+	if(busy)
+		generationCancled(request.song);
+
+	busy = false;
 }
 
-void AceStepWorker::cancelGeneration()
+bool AceStep::requestGeneration(SongItem song, QString requestTemplate, QString aceStepPath,
+							   QString qwen3ModelPath, QString textEncoderModelPath, QString ditModelPath,
+							   QString vaeModelPath)
 {
-	currentWorker = nullptr;
-}
-
-bool AceStepWorker::songGenerateing(SongItem* song)
-{
-	workerMutex.lock();
-	if(!currentWorker)
+	if(busy)
 	{
-		workerMutex.unlock();
+		qWarning()<<"Droping song:"<<song.caption;
 		return false;
 	}
-	else
+	busy = true;
+
+	request = {song, QRandomGenerator::global()->generate(), aceStepPath, textEncoderModelPath, ditModelPath, vaeModelPath};
+
+	QString qwen3Binary = aceStepPath + "/ace-qwen3";
+	QFileInfo qwen3Info(qwen3Binary);
+	if (!qwen3Info.exists() || !qwen3Info.isExecutable())
 	{
-		SongItem workerSong = currentWorker->getSong();
-		workerMutex.unlock();
-		if(song)
-			*song = workerSong;
-		return true;
+		generationError("ace-qwen3 binary not found at: " + qwen3Binary);
+		busy = false;
+		return false;
 	}
-}
+	if (!QFileInfo::exists(qwen3ModelPath))
+	{
+		generationError("Qwen3 model not found: " + qwen3ModelPath);
+		busy = false;
+		return false;
+	}
+	if (!QFileInfo::exists(textEncoderModelPath))
+	{
+		generationError("Text encoder model not found: " + textEncoderModelPath);
+		busy = false;
+		return false;
+	}
+	if (!QFileInfo::exists(ditModelPath))
+	{
+		generationError("DiT model not found: " + ditModelPath);
+		busy = false;
+		return false;
+	}
+	if (!QFileInfo::exists(vaeModelPath))
+	{
+		generationError("VAE model not found: " + vaeModelPath);
+		busy = false;
+		return false;
+	}
 
-// Worker implementation
-void AceStepWorker::Worker::run()
-{
-	uint64_t uid = QRandomGenerator::global()->generate();
-	// Create temporary JSON file for the request
-	QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-	QString requestFile = tempDir + "/request_" + QString::number(uid) + ".json";
+	request.requestFilePath = tempDir + "/request_" + QString::number(request.uid) + ".json";
 
-	// Parse and modify the template
 	QJsonParseError parseError;
-	QJsonDocument templateDoc = QJsonDocument::fromJson(jsonTemplate.toUtf8(), &parseError);
+	QJsonDocument templateDoc = QJsonDocument::fromJson(requestTemplate.toUtf8(), &parseError);
 	if (!templateDoc.isObject())
 	{
-		emit parent->generationError("Invalid JSON template: " + QString(parseError.errorString()));
-		return;
+		generationError("Invalid JSON template: " + QString(parseError.errorString()));
+		busy = false;
+		return false;
 	}
 
 	QJsonObject requestObj = templateDoc.object();
 	requestObj["caption"] = song.caption;
 
 	if (!song.lyrics.isEmpty())
-	{
 		requestObj["lyrics"] = song.lyrics;
-	}
-	else
-	{
-		// Remove lyrics field if empty to let the LLM generate them
-		requestObj.remove("lyrics");
-	}
-
-	// Apply vocal language override if set
 	if (!song.vocalLanguage.isEmpty())
-	{
 		requestObj["vocal_language"] = song.vocalLanguage;
-	}
 
 	// Write the request file
-	QFile requestFileHandle(requestFile);
+	QFile requestFileHandle(request.requestFilePath);
 	if (!requestFileHandle.open(QIODevice::WriteOnly | QIODevice::Text))
 	{
-		emit parent->generationError("Failed to create request file: " + requestFileHandle.errorString());
-		return;
+		emit generationError("Failed to create request file: " + requestFileHandle.errorString());
+		busy = false;
+		return false;
 	}
-
 	requestFileHandle.write(QJsonDocument(requestObj).toJson(QJsonDocument::Indented));
 	requestFileHandle.close();
 
-	// Use provided paths for acestep.cpp binaries
-	QString qwen3Binary = this->aceStepPath + "/ace-qwen3";
-	QString ditVaeBinary = this->aceStepPath + "/dit-vae";
+	QStringList qwen3Args;
+	qwen3Args << "--request" << request.requestFilePath;
+	qwen3Args << "--model" << qwen3ModelPath;
 
-	// Check if binaries exist
-	QFileInfo qwen3Info(qwen3Binary);
-	QFileInfo ditVaeInfo(ditVaeBinary);
+	progressUpdate(30);
 
-	if (!qwen3Info.exists() || !qwen3Info.isExecutable())
+	qwenProcess.start(qwen3Binary, qwen3Args);
+	return true;
+}
+
+void AceStep::qwenProcFinished(int code, QProcess::ExitStatus status)
+{
+	QFile::remove(request.requestFilePath);
+	if(code != 0)
 	{
-		emit parent->generationError("ace-qwen3 binary not found at: " + qwen3Binary);
+		QString errorOutput = qwenProcess.readAllStandardError();
+		generationError("dit-vae exited with code " + QString::number(code) + ": " + errorOutput);
+		busy = false;
 		return;
 	}
 
+	QString ditVaeBinary = request.aceStepPath + "/dit-vae";
+	QFileInfo ditVaeInfo(ditVaeBinary);
 	if (!ditVaeInfo.exists() || !ditVaeInfo.isExecutable())
 	{
-		emit parent->generationError("dit-vae binary not found at: " + ditVaeBinary);
+		generationError("dit-vae binary not found at: " + ditVaeBinary);
+		busy = false;
 		return;
 	}
 
-	// Use provided model paths
-	QString qwen3Model = this->qwen3ModelPath;
-	QString textEncoderModel = this->textEncoderModelPath;
-	QString ditModel = this->ditModelPath;
-	QString vaeModel = this->vaeModelPath;
-
-	if (!QFileInfo::exists(qwen3Model))
+	request.requestLlmFilePath = tempDir + "/request_" + QString::number(request.uid) + "0.json";
+	if (!QFileInfo::exists(request.requestLlmFilePath))
 	{
-		emit parent->generationError("Qwen3 model not found: " + qwen3Model);
-		return;
-	}
-
-	if (!QFileInfo::exists(textEncoderModel))
-	{
-		emit parent->generationError("Text encoder model not found: " + textEncoderModel);
-		return;
-	}
-
-	if (!QFileInfo::exists(ditModel))
-	{
-		emit parent->generationError("DiT model not found: " + ditModel);
-		return;
-	}
-
-	if (!QFileInfo::exists(vaeModel))
-	{
-		emit parent->generationError("VAE model not found: " + vaeModel);
-		return;
-	}
-
-	// Step 1: Run ace-qwen3 to generate lyrics and audio codes
-	QProcess qwen3Process;
-	QStringList qwen3Args;
-	qwen3Args << "--request" << requestFile;
-	qwen3Args << "--model" << qwen3Model;
-
-	emit parent->progressUpdate(20);
-
-	qwen3Process.start(qwen3Binary, qwen3Args);
-	if (!qwen3Process.waitForStarted())
-	{
-		emit parent->generationError("Failed to start ace-qwen3: " + qwen3Process.errorString());
-		return;
-	}
-
-	if (!qwen3Process.waitForFinished(60000))   // 60 second timeout
-	{
-		qwen3Process.terminate();
-		qwen3Process.waitForFinished(5000);
-		emit parent->generationError("ace-qwen3 timed out after 60 seconds");
-		return;
-	}
-
-	int exitCode = qwen3Process.exitCode();
-	if (exitCode != 0)
-	{
-		QString errorOutput = qwen3Process.readAllStandardError();
-		emit parent->generationError("ace-qwen3 exited with code " + QString::number(exitCode) + ": " + errorOutput);
-		return;
-	}
-
-	QString requestLmOutputFile = tempDir + "/request_" + QString::number(uid) + "0.json";
-	if (!QFileInfo::exists(requestLmOutputFile))
-	{
-		emit parent->generationError("ace-qwen3 failed to create enhaced request file "+requestLmOutputFile);
+		generationError("ace-qwen3 failed to create enhaced request file "+request.requestLlmFilePath);
+		busy = false;
 		return;
 	}
 
 	// Load lyrics from the enhanced request file
-	QFile lmOutputFile(requestLmOutputFile);
+	QFile lmOutputFile(request.requestLlmFilePath);
 	if (lmOutputFile.open(QIODevice::ReadOnly | QIODevice::Text))
 	{
 		QJsonParseError parseError;
-		song.json = lmOutputFile.readAll();
-		QJsonDocument doc = QJsonDocument::fromJson(song.json.toUtf8(), &parseError);
+		request.song.json = lmOutputFile.readAll();
+		QJsonDocument doc = QJsonDocument::fromJson(request.song.json.toUtf8(), &parseError);
 		lmOutputFile.close();
 
 		if (doc.isObject() && !parseError.error)
 		{
 			QJsonObject obj = doc.object();
 			if (obj.contains("lyrics") && obj["lyrics"].isString())
-			{
-				song.lyrics = obj["lyrics"].toString();
-			}
+				request.song.lyrics = obj["lyrics"].toString();
 		}
 	}
 
-	emit parent->progressUpdate(50);
-
 	// Step 2: Run dit-vae to generate audio
-	QProcess ditVaeProcess;
 	QStringList ditVaeArgs;
-	ditVaeArgs << "--request" << requestLmOutputFile;
-	ditVaeArgs << "--text-encoder" << textEncoderModel;
-	ditVaeArgs << "--dit" << ditModel;
-	ditVaeArgs << "--vae" << vaeModel;
+	ditVaeArgs << "--request"<<request.requestLlmFilePath;
+	ditVaeArgs << "--text-encoder"<<request.textEncoderModelPath;
+	ditVaeArgs << "--dit"<<request.ditModelPath;
+	ditVaeArgs << "--vae"<<request.vaeModelPath;
 
-	emit parent->progressUpdate(60);
+	progressUpdate(60);
 
 	ditVaeProcess.start(ditVaeBinary, ditVaeArgs);
-	if (!ditVaeProcess.waitForStarted())
-	{
-		emit parent->generationError("Failed to start dit-vae: " + ditVaeProcess.errorString());
-		return;
-	}
+}
 
-	if (!ditVaeProcess.waitForFinished(120000))   // 2 minute timeout
-	{
-		ditVaeProcess.terminate();
-		ditVaeProcess.waitForFinished(5000);
-		emit parent->generationError("dit-vae timed out after 2 minutes");
-		return;
-	}
-
-	exitCode = ditVaeProcess.exitCode();
-	if (exitCode != 0)
+void AceStep::ditProcFinished(int code, QProcess::ExitStatus status)
+{
+	QFile::remove(request.requestLlmFilePath);
+	if (code != 0)
 	{
 		QString errorOutput = ditVaeProcess.readAllStandardError();
-		emit parent->generationError("dit-vae exited with code " + QString::number(exitCode) + ": " + errorOutput);
+		generationError("dit-vae exited with code " + QString::number(code) + ": " + errorOutput);
+		busy = false;
 		return;
 	}
-
-	emit parent->progressUpdate(90);
 
 	// Find the generated WAV file
-	QString wavFile = QFileInfo(requestFile).absolutePath()+"/request_" + QString::number(uid) + "00.wav";
+	QString wavFile = tempDir+"/request_" + QString::number(request.uid) + "00.wav";
 	if (!QFileInfo::exists(wavFile))
 	{
-		emit parent->generationError("No WAV file generated at "+wavFile);
+		generationError("No WAV file generated at "+wavFile);
+		busy = false;
 		return;
 	}
+	busy = false;
 
-	// Clean up temporary files
-	QFile::remove(requestLmOutputFile);
-	QFile::remove(requestFile);
-
-	emit parent->progressUpdate(100);
-	song.file = wavFile;
-	emit parent->songGenerated(song);
-	parent->workerMutex.lock();
-	parent->currentWorker = nullptr;
-	parent->workerMutex.unlock();
+	progressUpdate(100);
+	request.song.file = wavFile;
+	songGenerated(request.song);
 }
 
-const SongItem& AceStepWorker::Worker::getSong()
-{
-	return song;
-}

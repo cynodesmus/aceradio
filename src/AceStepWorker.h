@@ -2,64 +2,55 @@
 #define ACESTEPWORKER_H
 
 #include <QObject>
-#include <QRunnable>
-#include <QThreadPool>
 #include <QString>
-#include <QJsonObject>
-#include <QMutex>
+#include <QProcess>
+#include <QStandardPaths>
 
 #include "SongItem.h"
 
-class AceStepWorker : public QObject
+class AceStep : public QObject
 {
 	Q_OBJECT
-public:
-	explicit AceStepWorker(QObject *parent = nullptr);
-	~AceStepWorker();
+	QProcess qwenProcess;
+	QProcess ditVaeProcess;
 
-	void generateSong(const SongItem& song, const QString &jsonTemplate,
-	                  const QString &aceStepPath, const QString &qwen3ModelPath,
-	                  const QString &textEncoderModelPath, const QString &ditModelPath,
-	                  const QString &vaeModelPath);
-	void cancelGeneration();
-	bool songGenerateing(SongItem* song);
+	bool busy = false;
 
-signals:
-	void songGenerated(const SongItem& song);
-	void generationFinished();
-	void generationError(const QString &error);
-	void progressUpdate(int percent);
-
-private:
-	class Worker : public QRunnable
+	struct Request
 	{
-	public:
-		Worker(AceStepWorker *parent, const SongItem& song, const QString &jsonTemplate,
-		       const QString &aceStepPath, const QString &qwen3ModelPath,
-		       const QString &textEncoderModelPath, const QString &ditModelPath,
-		       const QString &vaeModelPath)
-			: parent(parent), song(song), jsonTemplate(jsonTemplate),
-			  aceStepPath(aceStepPath), qwen3ModelPath(qwen3ModelPath),
-			  textEncoderModelPath(textEncoderModelPath), ditModelPath(ditModelPath),
-			  vaeModelPath(vaeModelPath) {}
-
-		void run() override;
-
-		const SongItem& getSong();
-
-	private:
-		AceStepWorker *parent;
 		SongItem song;
-		QString jsonTemplate;
+		uint64_t uid;
 		QString aceStepPath;
-		QString qwen3ModelPath;
 		QString textEncoderModelPath;
 		QString ditModelPath;
 		QString vaeModelPath;
+		QString requestFilePath;
+		QString requestLlmFilePath;
 	};
 
-	QMutex workerMutex;
-	Worker *currentWorker;
+	Request request;
+
+	const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+
+signals:
+	void songGenerated(SongItem song);
+	void generationCancled(SongItem song);
+	void generationError(QString error);
+	void progressUpdate(int progress);
+
+public slots:
+	bool requestGeneration(SongItem song, QString requestTemplate, QString aceStepPath,
+						   QString qwen3ModelPath, QString textEncoderModelPath, QString ditModelPath,
+						   QString vaeModelPath);
+
+public:
+	AceStep(QObject* parent = nullptr);
+	bool isGenerateing(SongItem* song = nullptr);
+	void cancleGenerateion();
+
+private slots:
+	void qwenProcFinished(int code, QProcess::ExitStatus status);
+	void ditProcFinished(int code, QProcess::ExitStatus status);
 };
 
 #endif // ACESTEPWORKER_H

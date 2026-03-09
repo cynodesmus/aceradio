@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QQueue>
 #include <QPair>
-#include <cstdint>
+#include <QThread>
 #include <QStandardPaths>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -47,6 +47,7 @@ private slots:
 	void on_songListView_doubleClicked(const QModelIndex &index);
 
 	void songGenerated(const SongItem& song);
+	void generationCanceld(const SongItem& song);
 	void playNextSong();
 	void playbackStarted();
 	void updatePlaybackStatus(bool playing);
@@ -64,7 +65,8 @@ private:
 	Ui::MainWindow *ui;
 	SongListModel *songModel;
 	AudioPlayer *audioPlayer;
-	AceStepWorker *aceStepWorker;
+	QThread aceThread;
+	AceStep *aceStep;
 	QTimer *playbackTimer;
 
 	QString formatTime(int milliseconds);

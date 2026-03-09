@@ -1,7 +1,7 @@
-#include "MainWindow.h"
 #include <QApplication>
-#include <QStyleFactory>
-#include <QIcon>
+#include <QThread>
+
+#include "MainWindow.h"
 
 int main(int argc, char *argv[])
 {
