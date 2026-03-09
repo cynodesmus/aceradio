@@ -193,11 +193,7 @@ int SongListModel::findNextIndex(int currentIndex, bool shuffle) const
 		return -1;
 
 	if (shuffle)
-	{
-		// Simple random selection for shuffle mode
-		QRandomGenerator generator;
-		return generator.bounded(songList.size());
-	}
+		return QRandomGenerator::global()->bounded(songList.size());
 
 	// Sequential playback
 	int nextIndex = currentIndex + 1;
