@@ -61,7 +61,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 
 # Install .desktop file
-install(FILES aceradio.desktop DESTINATION share/applications)
+install(FILES res/xyz.uvos.aceradio.desktop DESTINATION share/applications)
 
 # Install icon files
 install(FILES res/xyz.uvos.aceradio.png DESTINATION share/icons/hicolor/256x256/apps RENAME xyz.uvos.aceradio.png)
