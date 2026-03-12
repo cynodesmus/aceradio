@@ -27,9 +27,40 @@ class MainWindow : public QMainWindow
 {
 	Q_OBJECT
 
+	Ui::MainWindow *ui;
+	SongListModel *songModel;
+	AudioPlayer *audioPlayer;
+	QThread aceThread;
+	AceStep *aceStep;
+	QTimer *playbackTimer;
+
+	QString formatTime(int milliseconds);
+
+	SongItem currentSong;
+	bool isPlaying;
+	bool isPaused;
+	bool shuffleMode;
+	bool isGeneratingNext;
+	bool isFirstRun;
+	QString jsonTemplate;
+
+	// Path settings
+	QString aceStepPath;
+	QString qwen3ModelPath;
+	QString textEncoderModelPath;
+	QString ditModelPath;
+	QString vaeModelPath;
+
+	// Queue for generated songs
+	static constexpr int generationTresh = 2;
+	QQueue<SongItem> generatedSongQueue;
+
 public:
 	MainWindow(QWidget *parent = nullptr);
 	~MainWindow();
+
+public slots:
+	void show();
 
 private slots:
 	void on_playButton_clicked();
@@ -57,37 +88,6 @@ private slots:
 	void on_actionLoadPlaylist();
 	void on_actionAppendPlaylist();
 	void on_actionSaveSong();
-
-private:
-	void startNextSongGeneration();
-
-private:
-	Ui::MainWindow *ui;
-	SongListModel *songModel;
-	AudioPlayer *audioPlayer;
-	QThread aceThread;
-	AceStep *aceStep;
-	QTimer *playbackTimer;
-
-	QString formatTime(int milliseconds);
-
-	SongItem currentSong;
-	bool isPlaying;
-	bool isPaused;
-	bool shuffleMode;
-	bool isGeneratingNext;
-	QString jsonTemplate;
-
-	// Path settings
-	QString aceStepPath;
-	QString qwen3ModelPath;
-	QString textEncoderModelPath;
-	QString ditModelPath;
-	QString vaeModelPath;
-
-	// Queue for generated songs
-	static constexpr int generationTresh = 2;
-	QQueue<SongItem> generatedSongQueue;
 
 private:
 	void loadSettings();

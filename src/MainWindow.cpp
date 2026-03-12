@@ -130,6 +130,8 @@ void MainWindow::loadSettings()
 {
 	QSettings settings("MusicGenerator", "AceStepGUI");
 
+	isFirstRun = settings.value("firstRun", true).toBool();
+
 	// Load JSON template (default to simple configuration)
 	jsonTemplate = settings.value("jsonTemplate",
 	                              "{\n\t\"inference_steps\": 8,\n\t\"shift\": 3.0,\n\t\"vocal_language\": \"en\"\n}").toString();
@@ -165,6 +167,8 @@ void MainWindow::saveSettings()
 	settings.setValue("textEncoderModelPath", textEncoderModelPath);
 	settings.setValue("ditModelPath", ditModelPath);
 	settings.setValue("vaeModelPath", vaeModelPath);
+
+	settings.setValue("firstRun", false);
 }
 
 QString MainWindow::formatTime(int milliseconds)
@@ -397,7 +401,6 @@ void MainWindow::on_advancedSettingsButton_clicked()
 		vaeModelPath = dialog.getVAEModelPath();
 
 		saveSettings();
-		QMessageBox::information(this, "Settings Saved", "Advanced settings have been saved successfully.");
 	}
 }
 
@@ -803,4 +806,11 @@ bool MainWindow::loadPlaylistFromJson(const QString &filePath, QList<SongItem> &
 	}
 
 	return true;
+}
+
+void MainWindow::show()
+{
+	QMainWindow::show();
+	if(isFirstRun)
+		QMessageBox::information(this, "Welcome", "Welcome to AceStepGUI! Please configure paths in Settings→Ace Step before generateing your first song.");
 }
