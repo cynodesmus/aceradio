@@ -10,9 +10,12 @@ A C++ Qt graphical user interface for generating music using [acestep.cpp](https
 - CMake 3.14+
 - acestep.cpp (bring your own binaries)
 
-## Building
+## Installing
 
-### Build acestep.cpp first:
+1. Grab the latest release from https://github.com/IMbackK/aceradio/releases/
+2. For now you will have to provide acestep.cpp binaries, these can be optained by following the instructions at https://github.com/ServeurpersoCom/acestep.cpp or the **Build acestep.cpp** section below
+
+## Build acestep.cpp:
 
 ```bash
 git clone https://github.com/ServeurpersoCom/acestep.cpp.git
@@ -23,7 +26,7 @@ make -j$(nproc)
 ./models.sh  # Download models (requires ~7.7 GB free space)
 ```
 
-### Build the GUI:
+## Building
 
 ```bash
 git clone https://github.com/IMbackK/aceradio.git
