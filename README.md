@@ -39,9 +39,9 @@ make -j$(nproc)
 
 ### Windows (Qt6 + CMake)
 
-To build on Windows, ensure you have **CMake** and **Qt6** installed. Run the following commands in **Command Prompt (cmd)** or **PowerShell**:
+To build on Windows run the following commands in *Command Prompt (cmd)* or *PowerShell*:
 
-1. **Configure and Build:**
+1. Configure and Build:
 ```cmd
 git clone https://github.com/IMbackK/aceradio.git
 cd aceradio
@@ -54,7 +54,7 @@ cmake --build build --config Release --parallel
 ```
 Note: Replace C:/Qt/6.x.x/msvc2019_64 with your actual Qt installation path.
 
-2. **Deploy Dependencies:**
+2. Deploy Dependencies:
 Run windeployqt to copy necessary Qt libraries to the build folder:
 ```cmd
 "C:\Qt\6.x.x\msvc2019_64\bin\windeployqt.exe" --no-translations build\Release\aceradio.exe
