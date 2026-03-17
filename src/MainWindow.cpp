@@ -1,3 +1,6 @@
+// Copyright Carl Philipp Klemm 2026
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "SongDialog.h"

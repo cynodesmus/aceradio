@@ -1,3 +1,6 @@
+// Copyright Carl Philipp Klemm 2026
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "SongListModel.h"
 #include <QApplication>
 #include <QTime>

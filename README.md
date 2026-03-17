@@ -39,3 +39,7 @@ make -j$(nproc)
 ## Setup Paths:
 
 Go to settings->Ace Step->Model Paths and add the paths to the acestep.cpp binaries the models.
+
+## License
+
+Aceradio and all its files, unless otherwise noted, are licensed to you under the GPL-3.0-or-later license

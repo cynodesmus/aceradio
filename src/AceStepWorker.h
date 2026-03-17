@@ -1,3 +1,8 @@
+/*
+ * Copyright Carl Philipp Klemm 2026
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 #ifndef ACESTEPWORKER_H
 #define ACESTEPWORKER_H
 

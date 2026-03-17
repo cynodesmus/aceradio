@@ -1,3 +1,6 @@
+// Copyright Carl Philipp Klemm 2026
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "SongDialog.h"
 #include "ui_SongDialog.h"
 #include <QMessageBox>
