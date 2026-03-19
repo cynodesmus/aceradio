@@ -1,73 +1,64 @@
-// Copyright Carl Philipp Klemm 2026
+// Copyright Carl Philipp Klemm, cynodesmus 2026
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "elidedlabel.h"
 
-#include <QTextLayout>
 #include <QPainter>
+#include <QTextLayout>
 
-ElidedLabel::ElidedLabel(const QString &text, QWidget *parent)
-	: QFrame(parent)
-	, elided(false)
-	, content(text)
-{
-	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+ElidedLabel::ElidedLabel(const QString & text, QWidget * parent) : QFrame(parent), elided(false), content(text) {
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 }
 
-ElidedLabel::ElidedLabel(QWidget *parent)
-	: QFrame(parent)
-	, elided(false)
-	, content("")
-{
-	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+ElidedLabel::ElidedLabel(QWidget * parent) : QFrame(parent), elided(false), content("") {
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 }
 
-void ElidedLabel::setText(const QString &newText)
-{
-	content = newText;
-	update();
+void ElidedLabel::setText(const QString & newText) {
+    content = newText;
+    update();
 }
 
-void ElidedLabel::paintEvent(QPaintEvent *event)
-{
-	QFrame::paintEvent(event);
+void ElidedLabel::paintEvent(QPaintEvent * event) {
+    QFrame::paintEvent(event);
 
-	QPainter painter(this);
-	QFontMetrics fontMetrics = painter.fontMetrics();
+    QPainter     painter(this);
+    QFontMetrics fontMetrics = painter.fontMetrics();
 
-	bool didElide = false;
-	int lineSpacing = fontMetrics.lineSpacing();
-	int y = 0;
+    bool didElide    = false;
+    int  lineSpacing = fontMetrics.lineSpacing();
+    int  y           = 0;
 
-	QTextLayout textLayout(content, painter.font());
-	textLayout.beginLayout();
-	forever {
-		QTextLine line = textLayout.createLine();
+    QTextLayout textLayout(content, painter.font());
+    textLayout.beginLayout();
+    forever {
+        QTextLine line = textLayout.createLine();
 
-		if (!line.isValid())
-			break;
+        if (!line.isValid()) {
+            break;
+        }
 
-		line.setLineWidth(width());
-		int nextLineY = y + lineSpacing;
+        line.setLineWidth(width());
+        int nextLineY = y + lineSpacing;
 
-		if (height() >= nextLineY + lineSpacing) {
-			line.draw(&painter, QPoint(0, y));
-			y = nextLineY;
-			//! [2]
-			//! [3]
-		} else {
-			QString lastLine = content.mid(line.textStart());
-			QString elidedLastLine = fontMetrics.elidedText(lastLine, Qt::ElideRight, width());
-			painter.drawText(QPoint(0, y + fontMetrics.ascent()), elidedLastLine);
-			line = textLayout.createLine();
-			didElide = line.isValid();
-			break;
-		}
-	}
-	textLayout.endLayout();
+        if (height() >= nextLineY + lineSpacing) {
+            line.draw(&painter, QPoint(0, y));
+            y = nextLineY;
+            //! [2]
+            //! [3]
+        } else {
+            QString lastLine       = content.mid(line.textStart());
+            QString elidedLastLine = fontMetrics.elidedText(lastLine, Qt::ElideRight, width());
+            painter.drawText(QPoint(0, y + fontMetrics.ascent()), elidedLastLine);
+            line     = textLayout.createLine();
+            didElide = line.isValid();
+            break;
+        }
+    }
+    textLayout.endLayout();
 
-	if (didElide != elided) {
-		elided = didElide;
-		emit elisionChanged(didElide);
-	}
+    if (didElide != elided) {
+        elided = didElide;
+        emit elisionChanged(didElide);
+    }
 }

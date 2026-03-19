@@ -1,4 +1,4 @@
-# Copyright Carl Philipp Klemm 2026
+# Copyright (c) 2026 Carl Philipp Klemm, cynodesmus
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 cmake_minimum_required(VERSION 3.14)

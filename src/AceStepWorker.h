@@ -1,17 +1,17 @@
 /*
- * Copyright Carl Philipp Klemm 2026
+ * Copyright Carl Philipp Klemm, cynodesmus 2026
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #ifndef ACESTEPWORKER_H
 #define ACESTEPWORKER_H
 
+#include "SongItem.h"
+
 #include <QObject>
-#include <QString>
 #include <QProcess>
 #include <QStandardPaths>
-
-#include "SongItem.h"
+#include <QString>
 
 #ifdef Q_OS_WIN
 inline const QString EXE_EXT = ".exe";
@@ -19,49 +19,51 @@ inline const QString EXE_EXT = ".exe";
 inline const QString EXE_EXT = "";
 #endif
 
-class AceStep : public QObject
-{
-	Q_OBJECT
-	QProcess qwenProcess;
-	QProcess ditVaeProcess;
+class AceStep : public QObject {
+    Q_OBJECT
+    QProcess qwenProcess;
+    QProcess ditVaeProcess;
 
-	bool busy = false;
+    bool busy = false;
 
-	struct Request
-	{
-		SongItem song;
-		uint64_t uid;
-		QString aceStepPath;
-		QString textEncoderModelPath;
-		QString ditModelPath;
-		QString vaeModelPath;
-		QString requestFilePath;
-		QString requestLlmFilePath;
-	};
+    struct Request {
+        SongItem song;
+        uint64_t uid;
+        QString  aceStepPath;
+        QString  textEncoderModelPath;
+        QString  ditModelPath;
+        QString  vaeModelPath;
+        QString  requestFilePath;
+        QString  requestLlmFilePath;
+    };
 
-	Request request;
+    Request request;
 
-	const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
 
-signals:
-	void songGenerated(SongItem song);
-	void generationCanceled(SongItem song);
-	void generationError(QString error);
-	void progressUpdate(int progress);
+  signals:
+    void songGenerated(SongItem song);
+    void generationCanceled(SongItem song);
+    void generationError(QString error);
+    void progressUpdate(int progress);
 
-public slots:
-	bool requestGeneration(SongItem song, QString requestTemplate, QString aceStepPath,
-						   QString qwen3ModelPath, QString textEncoderModelPath, QString ditModelPath,
-						   QString vaeModelPath);
+  public slots:
+    bool requestGeneration(SongItem song,
+                           QString  requestTemplate,
+                           QString  aceStepPath,
+                           QString  qwen3ModelPath,
+                           QString  textEncoderModelPath,
+                           QString  ditModelPath,
+                           QString  vaeModelPath);
 
-public:
-	AceStep(QObject* parent = nullptr);
-	bool isGenerating(SongItem* song = nullptr);
-	void cancelGeneration();
+  public:
+    AceStep(QObject * parent = nullptr);
+    bool isGenerating(SongItem * song = nullptr);
+    void cancelGeneration();
 
-private slots:
-	void qwenProcFinished(int code, QProcess::ExitStatus status);
-	void ditProcFinished(int code, QProcess::ExitStatus status);
+  private slots:
+    void qwenProcFinished(int code, QProcess::ExitStatus status);
+    void ditProcFinished(int code, QProcess::ExitStatus status);
 };
 
-#endif // ACESTEPWORKER_H
+#endif  // ACESTEPWORKER_H

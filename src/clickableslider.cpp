@@ -1,69 +1,55 @@
-// Copyright Carl Philipp Klemm 2026
+// Copyright Carl Philipp Klemm, cynodesmus 2026
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "clickableslider.h"
+
 #include <QStyle>
 
-ClickableSlider::ClickableSlider(QWidget *parent)
-	: QSlider(Qt::Orientation::Horizontal, parent)
-{
+ClickableSlider::ClickableSlider(QWidget * parent) : QSlider(Qt::Orientation::Horizontal, parent) {}
+
+ClickableSlider::ClickableSlider(Qt::Orientation orientation, QWidget * parent) : QSlider(orientation, parent) {}
+
+void ClickableSlider::mousePressEvent(QMouseEvent * event) {
+    if (event->button() == Qt::LeftButton) {
+        int val = pixelPosToRangeValue(event->pos());
+
+        // Block signals temporarily to avoid infinite recursion
+        blockSignals(true);
+        setValue(val);
+        blockSignals(false);
+
+        // Emit both valueChanged and sliderMoved signals for compatibility
+        emit valueChanged(val);
+        emit sliderMoved(val);
+    } else {
+        // Call base class implementation for other buttons
+        QSlider::mousePressEvent(event);
+    }
 }
 
-ClickableSlider::ClickableSlider(Qt::Orientation orientation, QWidget *parent)
-	: QSlider(orientation, parent)
-{
-}
+int ClickableSlider::pixelPosToRangeValue(const QPoint & pos) {
+    QStyleOptionSlider opt;
+    initStyleOption(&opt);
 
-void ClickableSlider::mousePressEvent(QMouseEvent *event)
-{
-	if (event->button() == Qt::LeftButton)
-	{
-		int val = pixelPosToRangeValue(event->pos());
+    QRect gr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
+    QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
 
-		// Block signals temporarily to avoid infinite recursion
-		blockSignals(true);
-		setValue(val);
-		blockSignals(false);
+    int sliderLength;
+    int sliderMin;
+    int sliderMax;
 
-		// Emit both valueChanged and sliderMoved signals for compatibility
-		emit valueChanged(val);
-		emit sliderMoved(val);
-	}
-	else
-	{
-		// Call base class implementation for other buttons
-		QSlider::mousePressEvent(event);
-	}
-}
+    if (orientation() == Qt::Horizontal) {
+        sliderLength = sr.width();
+        sliderMin    = gr.x();
+        sliderMax    = gr.right() - sliderLength + 1;
+    } else {
+        sliderLength = sr.height();
+        sliderMin    = gr.y();
+        sliderMax    = gr.bottom() - sliderLength + 1;
+    }
 
-int ClickableSlider::pixelPosToRangeValue(const QPoint &pos)
-{
-	QStyleOptionSlider opt;
-	initStyleOption(&opt);
+    QPoint pr = pos - sr.center() + sr.topLeft();
+    int    p  = orientation() == Qt::Horizontal ? pr.x() : pr.y();
 
-	QRect gr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
-	QRect sr = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
-
-	int sliderLength;
-	int sliderMin;
-	int sliderMax;
-
-	if (orientation() == Qt::Horizontal)
-	{
-		sliderLength = sr.width();
-		sliderMin = gr.x();
-		sliderMax = gr.right() - sliderLength + 1;
-	}
-	else
-	{
-		sliderLength = sr.height();
-		sliderMin = gr.y();
-		sliderMax = gr.bottom() - sliderLength + 1;
-	}
-
-	QPoint pr = pos - sr.center() + sr.topLeft();
-	int p = orientation() == Qt::Horizontal ? pr.x() : pr.y();
-
-	return QStyle::sliderValueFromPosition(minimum(), maximum(), p - sliderMin,
-	                                       sliderMax - sliderMin, opt.upsideDown);
+    return QStyle::sliderValueFromPosition(minimum(), maximum(), p - sliderMin, sliderMax - sliderMin, opt.upsideDown);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright Carl Philipp Klemm 2026
+ * Copyright Carl Philipp Klemm, cynodesmus 2026
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -8,30 +8,30 @@
 
 #include <QFrame>
 
-class ElidedLabel : public QFrame
-{
-	Q_OBJECT
-	Q_PROPERTY(QString text READ text WRITE setText)
-	Q_PROPERTY(bool isElided READ isElided)
+class ElidedLabel : public QFrame {
+    Q_OBJECT
+    Q_PROPERTY(QString text READ text WRITE setText)
+    Q_PROPERTY(bool isElided READ isElided)
 
-public:
-	explicit ElidedLabel(const QString &text, QWidget *parent = 0);
-	explicit ElidedLabel(QWidget *parent = 0);
+  public:
+    explicit ElidedLabel(const QString & text, QWidget * parent = 0);
+    explicit ElidedLabel(QWidget * parent = 0);
 
-	void setText(const QString &text);
-	const QString & text() const { return content; }
-	bool isElided() const { return elided; }
+    void setText(const QString & text);
 
-protected:
-	void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;
+    const QString & text() const { return content; }
 
-signals:
-	void elisionChanged(bool elided);
+    bool isElided() const { return elided; }
 
-private:
-	bool elided;
-	QString content;
+  protected:
+    void paintEvent(QPaintEvent * event) Q_DECL_OVERRIDE;
+
+  signals:
+    void elisionChanged(bool elided);
+
+  private:
+    bool    elided;
+    QString content;
 };
 
-
-#endif // ELIDEDLABEL_H
+#endif  // ELIDEDLABEL_H

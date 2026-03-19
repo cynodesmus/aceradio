@@ -1,27 +1,24 @@
 /*
- * Copyright Carl Philipp Klemm 2026
+ * Copyright Carl Philipp Klemm, cynodesmus 2026
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #pragma once
-#include <QString>
-#include <QRandomGenerator>
 #include <cstdint>
+#include <QRandomGenerator>
+#include <QString>
 
-class SongItem
-{
-public:
-	QString caption;
-	QString lyrics;
-	uint64_t uniqueId;
-	QString file;
-	QString vocalLanguage;
-	QString json;
+class SongItem {
+  public:
+    QString  caption;
+    QString  lyrics;
+    uint64_t uniqueId;
+    QString  file;
+    QString  vocalLanguage;
+    QString  json;
 
-	inline SongItem(const QString &caption = "", const QString &lyrics = "")
-		: caption(caption), lyrics(lyrics)
-	{
-		// Generate a unique ID using a cryptographically secure random number
-		uniqueId = QRandomGenerator::global()->generate64();
-	}
+    inline SongItem(const QString & caption = "", const QString & lyrics = "") : caption(caption), lyrics(lyrics) {
+        // Generate a unique ID using a cryptographically secure random number
+        uniqueId = QRandomGenerator::global()->generate64();
+    }
 };
