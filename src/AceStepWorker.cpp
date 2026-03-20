@@ -109,6 +109,8 @@ bool AceStep::requestGeneration(SongItem song, QString requestTemplate, QString 
 	if (!song.vocalLanguage.isEmpty())
 		requestObj["vocal_language"] = song.vocalLanguage;
 
+	requestObj["use_cot_caption"] = song.cotCaption;
+
 	// Write the request file
 	QFile requestFileHandle(request.requestFilePath);
 	if (!requestFileHandle.open(QIODevice::WriteOnly | QIODevice::Text))

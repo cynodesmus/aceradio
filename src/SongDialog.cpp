@@ -5,21 +5,16 @@
 #include "ui_SongDialog.h"
 #include <QMessageBox>
 
-SongDialog::SongDialog(QWidget *parent, const QString &caption, const QString &lyrics, const QString &vocalLanguage)
+SongDialog::SongDialog(QWidget *parent, const QString &caption, const QString &lyrics, const QString &vocalLanguage, bool cotEnabled)
 	: QDialog(parent),
 	  ui(new Ui::SongDialog)
 {
 	ui->setupUi(this);
 
-	// Set initial values if provided
-	if (!caption.isEmpty())
-	{
-		ui->captionEdit->setPlainText(caption);
-	}
-	if (!lyrics.isEmpty())
-	{
-		ui->lyricsEdit->setPlainText(lyrics);
-	}
+	ui->captionEdit->setPlainText(caption);
+	ui->lyricsEdit->setPlainText(lyrics);
+
+	ui->checkBoxEnhanceCaption->setChecked(cotEnabled);
 
 	// Setup vocal language combo box
 	ui->vocalLanguageCombo->addItem("--", "");  // Unset
@@ -108,6 +103,11 @@ QString SongDialog::getLyrics() const
 QString SongDialog::getVocalLanguage() const
 {
 	return ui->vocalLanguageCombo->currentData().toString();
+}
+
+bool SongDialog::getCotEnabled() const
+{
+	return ui->checkBoxEnhanceCaption->isChecked();
 }
 
 void SongDialog::on_okButton_clicked()

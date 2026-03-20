@@ -698,7 +698,8 @@ bool MainWindow::savePlaylistToJson(const QString &filePath, const QList<SongIte
 		songObj["caption"] = song.caption;
 		songObj["lyrics"] = song.lyrics;
 		songObj["vocalLanguage"] = song.vocalLanguage;
-		songObj["uniqueId"] = static_cast<qint64>(song.uniqueId); // Store as qint64 for JSON compatibility
+		songObj["uniqueId"] = static_cast<qint64>(song.uniqueId);
+		songObj["use_cot_caption"] = song.cotCaption;
 		songsArray.append(songObj);
 	}
 
@@ -779,31 +780,20 @@ bool MainWindow::loadPlaylistFromJson(const QString &filePath, QList<SongItem> &
 		SongItem song;
 
 		if (songObj.contains("caption"))
-		{
 			song.caption = songObj["caption"].toString();
-		}
 
 		if (songObj.contains("lyrics"))
-		{
 			song.lyrics = songObj["lyrics"].toString();
-		}
 
-		// Load vocalLanguage if present
 		if (songObj.contains("vocalLanguage"))
-		{
 			song.vocalLanguage = songObj["vocalLanguage"].toString();
-		}
 
-		// Load uniqueId if present (for backward compatibility)
 		if (songObj.contains("uniqueId"))
-		{
 			song.uniqueId = static_cast<uint64_t>(songObj["uniqueId"].toInteger());
-		}
 		else
-		{
-			// Generate new ID for old playlists without uniqueId
 			song.uniqueId = QRandomGenerator::global()->generate64();
-		}
+
+		song.cotCaption = songObj["use_cot_caption"].toBool(true);
 
 		songs.append(song);
 	}
