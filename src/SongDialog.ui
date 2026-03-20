@@ -7,7 +7,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>500</width>
-                <height>400</height>
+                <height>410</height>
             </rect>
         </property>
         <property name="windowTitle">
@@ -15,24 +15,34 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
             <item>
-                <widget class="QLabel" name="captionLabel">
-                    <property name="text">
-                        <string>Caption:</string>
+                <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0">
+                    <property name="bottomMargin">
+                        <number>0</number>
                     </property>
-                    <property name="alignment">
-                        <set>Qt::AlignTop</set>
-                    </property>
-                </widget>
+                    <item>
+                        <widget class="QLabel" name="captionLabel">
+                            <property name="text">
+                                <string>Caption:</string>
+                            </property>
+                            <property name="alignment">
+                                <set>Qt::AlignmentFlag::AlignTop</set>
+                            </property>
+                        </widget>
+                    </item>
+                    <item>
+                        <widget class="QCheckBox" name="checkBoxEnhanceCaption">
+                            <property name="text">
+                                <string>Enhance Caption</string>
+                            </property>
+                            <property name="checked">
+                                <bool>true</bool>
+                            </property>
+                        </widget>
+                    </item>
+                </layout>
             </item>
             <item>
-                <widget class="QTextEdit" name="captionEdit">
-                    <property name="placeholderText">
-                        <string>Enter song caption (e.g., "Upbeat pop rock anthem with driving electric guitars")</string>
-                    </property>
-                    <property name="maximumHeight">
-                        <number>80</number>
-                    </property>
-                </widget>
+                <widget class="QPlainTextEdit" name="captionEdit"/>
             </item>
             <item>
                 <widget class="QLabel" name="lyricsLabel">
@@ -40,19 +50,12 @@
                         <string>Lyrics (optional):</string>
                     </property>
                     <property name="alignment">
-                        <set>Qt::AlignTop</set>
+                        <set>Qt::AlignmentFlag::AlignTop</set>
                     </property>
                 </widget>
             </item>
             <item>
-                <widget class="QTextEdit" name="lyricsEdit">
-                    <property name="placeholderText">
-                        <string>Enter lyrics or leave empty for instrumental music</string>
-                    </property>
-                    <property name="minimumHeight">
-                        <number>150</number>
-                    </property>
-                </widget>
+                <widget class="QPlainTextEdit" name="lyricsEdit"/>
             </item>
             <item>
                 <widget class="QLabel" name="vocalLanguageLabel">
@@ -60,7 +63,7 @@
                         <string>Vocal Language:</string>
                     </property>
                     <property name="alignment">
-                        <set>Qt::AlignTop</set>
+                        <set>Qt::AlignmentFlag::AlignTop</set>
                     </property>
                 </widget>
             </item>
@@ -76,7 +79,7 @@
                     <item>
                         <spacer name="horizontalSpacer">
                             <property name="orientation">
-                                <enum>Qt::Horizontal</enum>
+                                <enum>Qt::Orientation::Horizontal</enum>
                             </property>
                             <property name="sizeHint" stdset="0">
                                 <size>

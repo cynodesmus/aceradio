@@ -15,9 +15,13 @@ class SongItem {
     uint64_t uniqueId;
     QString  file;
     QString  vocalLanguage;
+    bool     cotCaption;
     QString  json;
 
-    inline SongItem(const QString & caption = "", const QString & lyrics = "") : caption(caption), lyrics(lyrics) {
+    inline SongItem(const QString & caption = "", const QString & lyrics = "") :
+        caption(caption),
+        lyrics(lyrics),
+        cotCaption(true) {
         // Generate a unique ID using a cryptographically secure random number
         uniqueId = QRandomGenerator::global()->generate64();
     }

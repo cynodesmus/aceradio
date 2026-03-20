@@ -20,12 +20,14 @@ class SongDialog : public QDialog {
     explicit SongDialog(QWidget *       parent        = nullptr,
                         const QString & caption       = "",
                         const QString & lyrics        = "",
-                        const QString & vocalLanguage = "");
+                        const QString & vocalLanguage = "",
+                        bool            cotEnabled    = true);
     ~SongDialog();
 
     QString getCaption() const;
     QString getLyrics() const;
     QString getVocalLanguage() const;
+    bool    getCotEnabled() const;
 
   private slots:
     void on_okButton_clicked();
