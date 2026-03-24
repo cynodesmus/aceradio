@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
@@ -23,14 +24,12 @@ MainWindow::MainWindow(QWidget * parent) :
     ui(new Ui::MainWindow),
     songModel(new SongListModel(this)),
     audioPlayer(new AudioPlayer(this)),
-    aceStep(new AceStep(this)),
+    aceStep(new AceStep()),
     playbackTimer(new QTimer(this)),
     isPlaying(false),
     isPaused(false),
     shuffleMode(false),
     isGeneratingNext(false) {
-    aceStep->moveToThread(&aceThread);
-
     ui->setupUi(this);
 
     // Setup lyrics display
@@ -58,7 +57,7 @@ MainWindow::MainWindow(QWidget * parent) :
     connect(audioPlayer, &AudioPlayer::positionChanged, this, &MainWindow::updatePosition);
     connect(audioPlayer, &AudioPlayer::durationChanged, this, &MainWindow::updateDuration);
     connect(aceStep, &AceStep::songGenerated, this, &MainWindow::songGenerated);
-    connect(aceStep, &AceStep::generationCanceled, this, &MainWindow::generationCanceld);
+    connect(aceStep, &AceStep::generationCanceled, this, &MainWindow::generationCanceled);
     connect(aceStep, &AceStep::generationError, this, &MainWindow::generationError);
     connect(aceStep, &AceStep::progressUpdate, ui->progressBar, &QProgressBar::setValue);
 
@@ -90,10 +89,16 @@ MainWindow::MainWindow(QWidget * parent) :
     ui->nowPlayingLabel->setText("Now Playing:");
 
     currentSong = songModel->getSong(0);
+
+    aceStep->moveToThread(&aceThread);
+    aceThread.start();
 }
 
 MainWindow::~MainWindow() {
     aceStep->cancelGeneration();
+
+    aceThread.quit();
+    aceThread.wait();
 
     autoSavePlaylist();
     saveSettings();
@@ -144,7 +149,9 @@ void MainWindow::loadSettings() {
             .toString();
     ditModelPath =
         settings.value("ditModelPath", appDir + "/acestep.cpp/models/acestep-v15-turbo-Q8_0.gguf").toString();
-    vaeModelPath = settings.value("vaeModelPath", appDir + "/acestep.cpp/models/vae-BF16.gguf").toString();
+    vaeModelPath     = settings.value("vaeModelPath", appDir + "/acestep.cpp/models/vae-BF16.gguf").toString();
+    workingDirectory = settings.value("workingDirectory", "").toString();
+    aceStep->setWorkingDirectory(workingDirectory);
 }
 
 void MainWindow::saveSettings() {
@@ -162,6 +169,7 @@ void MainWindow::saveSettings() {
     settings.setValue("textEncoderModelPath", textEncoderModelPath);
     settings.setValue("ditModelPath", ditModelPath);
     settings.setValue("vaeModelPath", vaeModelPath);
+    settings.setValue("workingDirectory", workingDirectory);
 
     settings.setValue("firstRun", false);
 }
@@ -223,7 +231,12 @@ void MainWindow::on_playButton_clicked() {
         return;
     }
 
-    isPlaying = true;
+    isPlaying                = true;
+    QModelIndex currentIndex = ui->songListView->currentIndex();
+    if (currentIndex.isValid()) {
+        currentSong = songModel->getSong(currentIndex.row());
+    }
+
     ui->nowPlayingLabel->setText("Now Playing: Waiting for generation...");
     flushGenerationQueue();
     ensureSongsInQueue(true);
@@ -260,25 +273,30 @@ void MainWindow::on_stopButton_clicked() {
 }
 
 void MainWindow::on_shuffleButton_clicked() {
+    ui->shuffleButton->setEnabled(false);
+
     shuffleMode = ui->shuffleButton->isChecked();
     updateControls();
 
-    flushGenerationQueue();
-    if (isPlaying) {
-        ensureSongsInQueue();
+    if (songModel->rowCount() == 0) {
+        ui->shuffleButton->setEnabled(true);
+        return;
     }
+
+    flushGenerationQueue();
+
+    if (isPlaying) {
+        ensureSongsInQueue(false);
+    }
+
+    ui->shuffleButton->setEnabled(true);
 }
 
 void MainWindow::on_addSongButton_clicked() {
     SongDialog dialog(this);
 
     if (dialog.exec() == QDialog::Accepted) {
-        QString caption       = dialog.getCaption();
-        QString lyrics        = dialog.getLyrics();
-        QString vocalLanguage = dialog.getVocalLanguage();
-
-        SongItem newSong(caption, lyrics);
-        newSong.vocalLanguage = vocalLanguage;
+        SongItem newSong = dialog.getSong();
         songModel->addSong(newSong);
 
         // Select the new item
@@ -311,16 +329,10 @@ void MainWindow::on_songListView_doubleClicked(const QModelIndex & index) {
     } else if (index.column() == 1 || index.column() == 2) {
         SongItem song = songModel->getSong(row);
 
-        SongDialog dialog(this, song.caption, song.lyrics, song.vocalLanguage);
+        SongDialog dialog(this, song);
 
         if (dialog.exec() == QDialog::Accepted) {
-            QString caption       = dialog.getCaption();
-            QString lyrics        = dialog.getLyrics();
-            QString vocalLanguage = dialog.getVocalLanguage();
-
-            songModel->setData(songModel->index(row, 1), caption, SongListModel::CaptionRole);
-            songModel->setData(songModel->index(row, 1), lyrics, SongListModel::LyricsRole);
-            songModel->setData(songModel->index(row, 1), vocalLanguage, SongListModel::VocalLanguageRole);
+            songModel->updateSong(songModel->index(row, 1), dialog.getSong());
         }
     }
 
@@ -352,6 +364,7 @@ void MainWindow::on_advancedSettingsButton_clicked() {
     // Set current values
     dialog.setJsonTemplate(jsonTemplate);
     dialog.setAceStepPath(aceStepPath);
+    dialog.setWorkingDirectory(workingDirectory);
     dialog.setQwen3ModelPath(qwen3ModelPath);
     dialog.setTextEncoderModelPath(textEncoderModelPath);
     dialog.setDiTModelPath(ditModelPath);
@@ -369,10 +382,13 @@ void MainWindow::on_advancedSettingsButton_clicked() {
         // Update settings
         jsonTemplate         = dialog.getJsonTemplate();
         aceStepPath          = dialog.getAceStepPath();
+        workingDirectory     = dialog.getWorkingDirectory();
         qwen3ModelPath       = dialog.getQwen3ModelPath();
         textEncoderModelPath = dialog.getTextEncoderModelPath();
         ditModelPath         = dialog.getDiTModelPath();
         vaeModelPath         = dialog.getVAEModelPath();
+        workingDirectory     = dialog.getWorkingDirectory();
+        aceStep->setWorkingDirectory(workingDirectory);
 
         saveSettings();
     }
@@ -404,8 +420,8 @@ void MainWindow::songGenerated(const SongItem & song) {
     ensureSongsInQueue();
 }
 
-void MainWindow::generationCanceld(const SongItem & song) {
-    ui->statusbar->showMessage("Geneartion cancled: " + song.caption);
+void MainWindow::generationCanceled(const SongItem & song) {
+    ui->statusbar->showMessage("Generation canceled: " + song.caption);
 }
 
 void MainWindow::playNextSong() {
@@ -470,14 +486,14 @@ void MainWindow::on_positionSlider_sliderMoved(int position) {
     }
 }
 
-void MainWindow::ensureSongsInQueue(bool enqeueCurrent) {
-    // Only generate more songs if we're playing and not already at capacity
-    if (!isPlaying || isGeneratingNext || generatedSongQueue.size() >= generationTresh) {
+void MainWindow::ensureSongsInQueue(bool enqueueCurrent) {
+    if (songModel->rowCount() == 0 || !isPlaying || isGeneratingNext || generatedSongQueue.size() >= generationThresh) {
         return;
     }
 
     SongItem lastSong;
     SongItem workerSong;
+
     if (aceStep->isGenerating(&workerSong)) {
         lastSong = workerSong;
     } else if (!generatedSongQueue.empty()) {
@@ -487,18 +503,36 @@ void MainWindow::ensureSongsInQueue(bool enqeueCurrent) {
     }
 
     SongItem nextSong;
-    if (enqeueCurrent) {
+    if (enqueueCurrent) {
         nextSong = lastSong;
     } else {
-        int nextIndex = songModel->findNextIndex(songModel->findSongIndexById(lastSong.uniqueId), shuffleMode);
-        nextSong      = songModel->getSong(nextIndex);
+        int currentIndex = songModel->findSongIndexById(lastSong.uniqueId);
+        int nextIndex    = songModel->findNextIndex(currentIndex, shuffleMode);
+
+        if (nextIndex < 0 || nextIndex >= songModel->rowCount()) {
+            if (songModel->rowCount() > 0) {
+                nextIndex = 0;
+            } else {
+                return;
+            }
+        }
+        nextSong = songModel->getSong(nextIndex);
+    }
+
+    if (nextSong.caption.isEmpty() && nextSong.lyrics.isEmpty()) {
+        return;
     }
 
     isGeneratingNext = true;
+    ui->statusbar->showMessage("Generating: " + nextSong.caption);
 
-    ui->statusbar->showMessage("Generateing: " + nextSong.caption);
-    aceStep->requestGeneration(nextSong, jsonTemplate, aceStepPath, qwen3ModelPath, textEncoderModelPath, ditModelPath,
-                               vaeModelPath);
+    QMetaObject::invokeMethod(
+        aceStep,
+        [this, nextSong]() {
+            aceStep->requestGeneration(nextSong, jsonTemplate, aceStepPath, qwen3ModelPath, textEncoderModelPath,
+                                       ditModelPath, vaeModelPath);
+        },
+        Qt::QueuedConnection);
 }
 
 void MainWindow::flushGenerationQueue() {
@@ -628,17 +662,13 @@ bool MainWindow::savePlaylistToJson(const QString & filePath, const QList<SongIt
 
     for (const SongItem & song : songs) {
         QJsonObject songObj;
-        songObj["caption"]         = song.caption;
-        songObj["lyrics"]          = song.lyrics;
-        songObj["vocalLanguage"]   = song.vocalLanguage;
-        songObj["uniqueId"]        = static_cast<qint64>(song.uniqueId);
-        songObj["use_cot_caption"] = song.cotCaption;
+        song.store(songObj);
         songsArray.append(songObj);
     }
 
     QJsonObject rootObj;
     rootObj["songs"]   = songsArray;
-    rootObj["version"] = "1.0";
+    rootObj["version"] = "1.1";
 
     QJsonDocument doc(rootObj);
     QByteArray    jsonData = doc.toJson();
@@ -682,8 +712,8 @@ bool MainWindow::loadPlaylistFromJson(const QString & filePath, QList<SongItem> 
 
     QJsonObject rootObj = doc.object();
 
-    // Check for version compatibility
-    if (rootObj.contains("version") && rootObj["version"].toString() != "1.0") {
+    if (rootObj.contains("version") && rootObj["version"].toString() != "1.0" &&
+        rootObj["version"].toString() != "1.1") {
         qWarning() << "Unsupported playlist version:" << rootObj["version"].toString();
         return false;
     }
@@ -703,28 +733,7 @@ bool MainWindow::loadPlaylistFromJson(const QString & filePath, QList<SongItem> 
         }
 
         QJsonObject songObj = value.toObject();
-        SongItem    song;
-
-        if (songObj.contains("caption")) {
-            song.caption = songObj["caption"].toString();
-        }
-
-        if (songObj.contains("lyrics")) {
-            song.lyrics = songObj["lyrics"].toString();
-        }
-
-        if (songObj.contains("vocalLanguage")) {
-            song.vocalLanguage = songObj["vocalLanguage"].toString();
-        }
-
-        if (songObj.contains("uniqueId")) {
-            song.uniqueId = static_cast<uint64_t>(songObj["uniqueId"].toInteger());
-        } else {
-            song.uniqueId = QRandomGenerator::global()->generate64();
-        }
-
-        song.cotCaption = songObj["use_cot_caption"].toBool(true);
-
+        SongItem    song(songObj);
         songs.append(song);
     }
 
@@ -736,6 +745,6 @@ void MainWindow::show() {
     if (isFirstRun) {
         QMessageBox::information(
             this, "Welcome",
-            "Welcome to AceStepGUI! Please configure paths in Settings→Ace Step before generateing your first song.");
+            "Welcome to AceStepGUI! Please configure paths in Settings→Ace Step before generating your first song.");
     }
 }

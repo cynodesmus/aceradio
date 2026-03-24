@@ -4,6 +4,7 @@
 #include "AceStepWorker.h"
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -13,28 +14,29 @@
 #include <QRandomGenerator>
 #include <QStandardPaths>
 
-AceStep::AceStep(QObject * parent) : QObject(parent) {
-    connect(&qwenProcess, &QProcess::finished, this, &AceStep::qwenProcFinished);
-    connect(&ditVaeProcess, &QProcess::finished, this, &AceStep::ditProcFinished);
-}
+AceStep::AceStep(QObject * parent) : QObject(parent) {}
 
 bool AceStep::isGenerating(SongItem * song) {
-    if (!busy && song) {
+    if (busy && song) {
         *song = this->request.song;
     }
     return busy;
 }
 
 void AceStep::cancelGeneration() {
-    qwenProcess.blockSignals(true);
-    qwenProcess.terminate();
-    qwenProcess.waitForFinished();
-    qwenProcess.blockSignals(false);
+    if (qwenProcess) {
+        qwenProcess->blockSignals(true);
+        qwenProcess->kill();
+        qwenProcess->waitForFinished();
+        qwenProcess->blockSignals(false);
+    }
 
-    ditVaeProcess.blockSignals(true);
-    ditVaeProcess.terminate();
-    ditVaeProcess.waitForFinished();
-    ditVaeProcess.blockSignals(false);
+    if (ditVaeProcess) {
+        ditVaeProcess->blockSignals(true);
+        ditVaeProcess->kill();
+        ditVaeProcess->waitForFinished();
+        ditVaeProcess->blockSignals(false);
+    }
 
     progressUpdate(100);
     if (busy) {
@@ -57,8 +59,22 @@ bool AceStep::requestGeneration(SongItem song,
     }
     busy = true;
 
-    request = { song,        QRandomGenerator::global()->generate(), aceStepPath, textEncoderModelPath, ditModelPath,
-                vaeModelPath };
+    if (!qwenProcess) {
+        qwenProcess = new QProcess(this);
+        connect(qwenProcess, &QProcess::finished, this, &AceStep::qwenProcFinished);
+    }
+    if (!ditVaeProcess) {
+        ditVaeProcess = new QProcess(this);
+        connect(ditVaeProcess, &QProcess::finished, this, &AceStep::ditProcFinished);
+    }
+
+    // Generate a unique ID based on time (YYYYMMDD_HHMMSS_ZZZ)
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss_zzz");
+    // Use the selected folder or default Temp
+    QString baseDir =
+        workingDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::TempLocation) : workingDir;
+
+    request = { song, timestamp, 0, aceStepPath, textEncoderModelPath, ditModelPath, vaeModelPath };
 
     QString   qwen3Binary = aceStepPath + "/ace-lm" + EXE_EXT;
     QFileInfo qwen3Info(qwen3Binary);
@@ -88,7 +104,7 @@ bool AceStep::requestGeneration(SongItem song,
         return false;
     }
 
-    request.requestFilePath = tempDir + "/request_" + QString::number(request.uid) + ".json";
+    request.requestFilePath = baseDir + "/req_" + timestamp + ".json";
 
     QJsonParseError parseError;
     QJsonDocument   templateDoc = QJsonDocument::fromJson(requestTemplate.toUtf8(), &parseError);
@@ -99,16 +115,7 @@ bool AceStep::requestGeneration(SongItem song,
     }
 
     QJsonObject requestObj = templateDoc.object();
-    requestObj["caption"]  = song.caption;
-
-    if (!song.lyrics.isEmpty()) {
-        requestObj["lyrics"] = song.lyrics;
-    }
-    if (!song.vocalLanguage.isEmpty()) {
-        requestObj["vocal_language"] = song.vocalLanguage;
-    }
-
-    requestObj["use_cot_caption"] = song.cotCaption;
+    song.store(requestObj);
 
     // Write the request file
     QFile requestFileHandle(request.requestFilePath);
@@ -126,14 +133,14 @@ bool AceStep::requestGeneration(SongItem song,
 
     progressUpdate(30);
 
-    qwenProcess.start(qwen3Binary, qwen3Args);
+    qwenProcess->start(qwen3Binary, qwen3Args);
     return true;
 }
 
 void AceStep::qwenProcFinished(int code, QProcess::ExitStatus status) {
-    QFile::remove(request.requestFilePath);
+    // QFile::remove(request.requestFilePath); // COMMENTED: Save request history
     if (code != 0) {
-        QString errorOutput = qwenProcess.readAllStandardError();
+        QString errorOutput = qwenProcess->readAllStandardError();
         generationError("ace-lm exited with code " + QString::number(code) + ": " + errorOutput);
         busy = false;
         return;
@@ -147,7 +154,10 @@ void AceStep::qwenProcFinished(int code, QProcess::ExitStatus status) {
         return;
     }
 
-    request.requestLlmFilePath = tempDir + "/request_" + QString::number(request.uid) + "0.json";
+    // Use the paths generated at the beginning of generation
+    QString baseDir =
+        workingDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::TempLocation) : workingDir;
+    request.requestLlmFilePath = baseDir + "/req_" + request.uidStr + "0.json";
     if (!QFileInfo::exists(request.requestLlmFilePath)) {
         generationError("ace-lm failed to create enhanced request file " + request.requestLlmFilePath);
         busy = false;
@@ -180,20 +190,22 @@ void AceStep::qwenProcFinished(int code, QProcess::ExitStatus status) {
 
     progressUpdate(60);
 
-    ditVaeProcess.start(ditVaeBinary, ditVaeArgs);
+    ditVaeProcess->start(ditVaeBinary, ditVaeArgs);
 }
 
 void AceStep::ditProcFinished(int code, QProcess::ExitStatus status) {
-    QFile::remove(request.requestLlmFilePath);
+    // QFile::remove(request.requestLlmFilePath); // COMMENTED: Saving improved JSON
     if (code != 0) {
-        QString errorOutput = ditVaeProcess.readAllStandardError();
+        QString errorOutput = ditVaeProcess->readAllStandardError();
         generationError("ace-synth exited with code " + QString::number(code) + ": " + errorOutput);
         busy = false;
         return;
     }
 
     // Find the generated WAV file
-    QString wavFile = tempDir + "/request_" + QString::number(request.uid) + "00.wav";
+    QString baseDir =
+        workingDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::TempLocation) : workingDir;
+    QString wavFile = baseDir + "/req_" + request.uidStr + "00.wav";
     if (!QFileInfo::exists(wavFile)) {
         generationError("No WAV file generated at " + wavFile);
         busy = false;
@@ -202,6 +214,9 @@ void AceStep::ditProcFinished(int code, QProcess::ExitStatus status) {
     busy = false;
 
     progressUpdate(100);
-    request.song.file = wavFile;
-    songGenerated(request.song);
+    request.song.file         = wavFile;
+    request.song.originalJson = request.requestFilePath;
+    request.song.enhancedJson = request.requestLlmFilePath;
+
+    emit songGenerated(request.song);
 }

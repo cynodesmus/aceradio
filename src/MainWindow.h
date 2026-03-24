@@ -58,7 +58,7 @@ class MainWindow : public QMainWindow {
     QString vaeModelPath;
 
     // Queue for generated songs
-    static constexpr int generationTresh = 2;
+    static constexpr int generationThresh = 2;
     QQueue<SongItem>     generatedSongQueue;
 
   public:
@@ -84,7 +84,7 @@ class MainWindow : public QMainWindow {
     void on_songListView_doubleClicked(const QModelIndex & index);
 
     void songGenerated(const SongItem & song);
-    void generationCanceld(const SongItem & song);
+    void generationCanceled(const SongItem & song);
     void playNextSong();
     void playbackStarted();
     void updatePlaybackStatus(bool playing);
@@ -112,6 +112,8 @@ class MainWindow : public QMainWindow {
     void updateControls();
     void ensureSongsInQueue(bool enqeueCurrent = false);
     void flushGenerationQueue();
+
+    QString workingDirectory;
 };
 
 #endif  // MAINWINDOW_H

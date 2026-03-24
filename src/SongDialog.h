@@ -6,6 +6,8 @@
 #ifndef SONGDIALOG_H
 #define SONGDIALOG_H
 
+#include "SongItem.h"
+
 #include <QDialog>
 #include <QString>
 
@@ -15,19 +17,13 @@ class SongDialog;
 
 class SongDialog : public QDialog {
     Q_OBJECT
+    SongItem song;
 
   public:
-    explicit SongDialog(QWidget *       parent        = nullptr,
-                        const QString & caption       = "",
-                        const QString & lyrics        = "",
-                        const QString & vocalLanguage = "",
-                        bool            cotEnabled    = true);
+    explicit SongDialog(QWidget * parent = nullptr, const SongItem & song = SongItem());
     ~SongDialog();
 
-    QString getCaption() const;
-    QString getLyrics() const;
-    QString getVocalLanguage() const;
-    bool    getCotEnabled() const;
+    const SongItem & getSong();
 
   private slots:
     void on_okButton_clicked();

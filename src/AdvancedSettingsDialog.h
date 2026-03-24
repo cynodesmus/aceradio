@@ -23,6 +23,7 @@ class AdvancedSettingsDialog : public QDialog {
     // Getters for settings
     QString getJsonTemplate() const;
     QString getAceStepPath() const;
+    QString getWorkingDirectory() const;
     QString getQwen3ModelPath() const;
     QString getTextEncoderModelPath() const;
     QString getDiTModelPath() const;
@@ -31,6 +32,7 @@ class AdvancedSettingsDialog : public QDialog {
     // Setters for settings
     void setJsonTemplate(const QString & templateStr);
     void setAceStepPath(const QString & path);
+    void setWorkingDirectory(const QString & path);
     void setQwen3ModelPath(const QString & path);
     void setTextEncoderModelPath(const QString & path);
     void setDiTModelPath(const QString & path);
@@ -42,6 +44,7 @@ class AdvancedSettingsDialog : public QDialog {
     void on_textEncoderBrowseButton_clicked();
     void on_ditBrowseButton_clicked();
     void on_vaeBrowseButton_clicked();
+    void on_browseWorkDirButton_clicked();
 
   private:
     Ui::AdvancedSettingsDialog * ui;

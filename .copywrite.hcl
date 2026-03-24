@@ -12,7 +12,24 @@ project {
   # Supports doublestar glob patterns for more flexibility in defining which
   # files or folders should be ignored
   header_ignore = [
-    # "vendor/**",
-    # "**autogen**",
+    "vendor/**",
+    "**autogen**",
+    "res/**",
+    ".github/**",
+    "**/*.ui",
+    "**/*.qrc",
+    "**/*.png",
+    "**/*.desktop",
+    "**/*.txt",
+    "**/*.md",
+    "**/*.json",
+    "**/*.svg",
+    "**/*.pro",
+    "**/*.user",
+    "CMakeLists.txt",
+    "clang-format",
+    "editorconfig",
+    "LICENSE",
+    "copywrite.hcl",
   ]
 }

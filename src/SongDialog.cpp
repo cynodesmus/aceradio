@@ -7,22 +7,15 @@
 
 #include <QMessageBox>
 
-SongDialog::SongDialog(QWidget *       parent,
-                       const QString & caption,
-                       const QString & lyrics,
-                       const QString & vocalLanguage,
-                       bool            cotEnabled) :
-    QDialog(parent),
-    ui(new Ui::SongDialog) {
+SongDialog::SongDialog(QWidget * parent, const SongItem & song) : QDialog(parent), song(song), ui(new Ui::SongDialog) {
     ui->setupUi(this);
 
-    ui->captionEdit->setPlainText(caption);
-    ui->lyricsEdit->setPlainText(lyrics);
-
-    ui->checkBoxEnhanceCaption->setChecked(cotEnabled);
+    ui->captionEdit->setPlainText(song.caption);
+    ui->lyricsEdit->setPlainText(song.lyrics);
+    ui->checkBoxEnhanceCaption->setChecked(song.cotCaption);
 
     // Setup vocal language combo box
-    ui->vocalLanguageCombo->addItem("--", "");  // Unset
+    ui->vocalLanguageCombo->addItem("--", "");
     ui->vocalLanguageCombo->addItem("English (en)", "en");
     ui->vocalLanguageCombo->addItem("Chinese (zh)", "zh");
     ui->vocalLanguageCombo->addItem("Japanese (ja)", "ja");
@@ -75,40 +68,66 @@ SongDialog::SongDialog(QWidget *       parent,
     ui->vocalLanguageCombo->addItem("Cantonese (yue)", "yue");
     ui->vocalLanguageCombo->addItem("Unknown", "unknown");
 
-    // Set current language if provided
-    if (!vocalLanguage.isEmpty()) {
-        int index = ui->vocalLanguageCombo->findData(vocalLanguage);
+    ui->keyScaleCombo->addItem("--");
+    ui->keyScaleCombo->addItem("C major");
+    ui->keyScaleCombo->addItem("C# major");
+    ui->keyScaleCombo->addItem("D major");
+    ui->keyScaleCombo->addItem("D# major");
+    ui->keyScaleCombo->addItem("E major");
+    ui->keyScaleCombo->addItem("F major");
+    ui->keyScaleCombo->addItem("F# major");
+    ui->keyScaleCombo->addItem("G major");
+    ui->keyScaleCombo->addItem("G# major");
+    ui->keyScaleCombo->addItem("A major");
+    ui->keyScaleCombo->addItem("A# major");
+    ui->keyScaleCombo->addItem("B major");
+    ui->keyScaleCombo->addItem("C minor");
+    ui->keyScaleCombo->addItem("C# minor");
+    ui->keyScaleCombo->addItem("D minor");
+    ui->keyScaleCombo->addItem("D# minor");
+    ui->keyScaleCombo->addItem("E minor");
+    ui->keyScaleCombo->addItem("F minor");
+    ui->keyScaleCombo->addItem("F# minor");
+    ui->keyScaleCombo->addItem("G minor");
+    ui->keyScaleCombo->addItem("G# minor");
+    ui->keyScaleCombo->addItem("A minor");
+    ui->keyScaleCombo->addItem("A# minor");
+    ui->keyScaleCombo->addItem("B minor");
+
+    if (!song.vocalLanguage.isEmpty()) {
+        int index = ui->vocalLanguageCombo->findData(song.vocalLanguage);
         if (index >= 0) {
             ui->vocalLanguageCombo->setCurrentIndex(index);
+        } else {
+            ui->vocalLanguageCombo->addItem(song.vocalLanguage);
+            ui->vocalLanguageCombo->setCurrentIndex(ui->vocalLanguageCombo->count() - 1);
         }
     } else {
-        ui->vocalLanguageCombo->setCurrentIndex(0);  // Default to unset
+        ui->vocalLanguageCombo->setCurrentIndex(0);
     }
+
+    if (!song.key.isEmpty()) {
+        int index = ui->keyScaleCombo->findText(song.key);
+        if (index >= 0) {
+            ui->keyScaleCombo->setCurrentIndex(index);
+        } else {
+            ui->keyScaleCombo->addItem(song.key);
+            ui->keyScaleCombo->setCurrentIndex(ui->keyScaleCombo->count() - 1);
+        }
+    } else {
+        ui->keyScaleCombo->setCurrentIndex(0);
+    }
+
+    ui->bpmSpinBox->setValue(song.bpm);
 }
 
 SongDialog::~SongDialog() {
     delete ui;
 }
 
-QString SongDialog::getCaption() const {
-    return ui->captionEdit->toPlainText();
-}
-
-QString SongDialog::getLyrics() const {
-    return ui->lyricsEdit->toPlainText();
-}
-
-QString SongDialog::getVocalLanguage() const {
-    return ui->vocalLanguageCombo->currentData().toString();
-}
-
-bool SongDialog::getCotEnabled() const {
-    return ui->checkBoxEnhanceCaption->isChecked();
-}
-
 void SongDialog::on_okButton_clicked() {
     // Validate that caption is not empty
-    QString caption = getCaption();
+    QString caption = ui->captionEdit->toPlainText();
     if (caption.trimmed().isEmpty()) {
         QMessageBox::warning(this, "Invalid Input", "Caption cannot be empty.");
         return;
@@ -119,4 +138,18 @@ void SongDialog::on_okButton_clicked() {
 
 void SongDialog::on_cancelButton_clicked() {
     reject();
+}
+
+const SongItem & SongDialog::getSong() {
+    song.caption       = ui->captionEdit->toPlainText();
+    song.lyrics        = ui->lyricsEdit->toPlainText();
+    song.vocalLanguage = ui->vocalLanguageCombo->currentData().toString();
+    song.cotCaption    = ui->checkBoxEnhanceCaption->isChecked();
+    if (ui->keyScaleCombo->currentIndex() > 0) {
+        song.key = ui->keyScaleCombo->currentText();
+    } else {
+        song.key = "";
+    }
+    song.bpm = ui->bpmSpinBox->value();
+    return song;
 }

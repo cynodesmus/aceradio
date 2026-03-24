@@ -8,6 +8,7 @@
 
 #include "SongItem.h"
 
+#include <QDateTime>
 #include <QObject>
 #include <QProcess>
 #include <QStandardPaths>
@@ -21,14 +22,16 @@ inline const QString EXE_EXT = "";
 
 class AceStep : public QObject {
     Q_OBJECT
-    QProcess qwenProcess;
-    QProcess ditVaeProcess;
+    QProcess * qwenProcess   = nullptr;
+    QProcess * ditVaeProcess = nullptr;
 
-    bool busy = false;
+    bool    busy = false;
+    QString workingDir;
 
     struct Request {
         SongItem song;
-        uint64_t uid;
+        QString  uidStr;
+        int      startIndex;
         QString  aceStepPath;
         QString  textEncoderModelPath;
         QString  ditModelPath;
@@ -39,7 +42,9 @@ class AceStep : public QObject {
 
     Request request;
 
-    const QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QString getWorkDir() const {
+        return workingDir.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::TempLocation) : workingDir;
+    }
 
   signals:
     void songGenerated(SongItem song);
@@ -60,6 +65,8 @@ class AceStep : public QObject {
     AceStep(QObject * parent = nullptr);
     bool isGenerating(SongItem * song = nullptr);
     void cancelGeneration();
+
+    void setWorkingDirectory(const QString & path) { workingDir = path; }
 
   private slots:
     void qwenProcFinished(int code, QProcess::ExitStatus status);

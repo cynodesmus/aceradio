@@ -34,12 +34,15 @@ add_executable(${PROJECT_NAME}
     src/AudioPlayer.h
     src/AceStepWorker.cpp
     src/AceStepWorker.h
+    src/SongItem.cpp
     src/SongItem.h
-    src/clickableslider.h
     src/clickableslider.cpp
+    src/clickableslider.h
     ${MusicGeneratorGUI_H}
     res/resources.qrc
-    src/elidedlabel.h src/elidedlabel.cpp
+    src/elidedlabel.cpp
+    src/elidedlabel.h
+
 )
 
 # UI file

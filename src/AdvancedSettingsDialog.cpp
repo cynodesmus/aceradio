@@ -42,6 +42,10 @@ QString AdvancedSettingsDialog::getVAEModelPath() const {
     return ui->vaeModelEdit->text();
 }
 
+QString AdvancedSettingsDialog::getWorkingDirectory() const {
+    return ui->workingDirectoryLineEdit->text();
+}
+
 void AdvancedSettingsDialog::setJsonTemplate(const QString & templateStr) {
     ui->jsonTemplateEdit->setPlainText(templateStr);
 }
@@ -64,6 +68,10 @@ void AdvancedSettingsDialog::setDiTModelPath(const QString & path) {
 
 void AdvancedSettingsDialog::setVAEModelPath(const QString & path) {
     ui->vaeModelEdit->setText(path);
+}
+
+void AdvancedSettingsDialog::setWorkingDirectory(const QString & path) {
+    ui->workingDirectoryLineEdit->setText(path);
 }
 
 void AdvancedSettingsDialog::on_aceStepBrowseButton_clicked() {
@@ -103,5 +111,14 @@ void AdvancedSettingsDialog::on_vaeBrowseButton_clicked() {
         QFileDialog::getOpenFileName(this, "Select VAE Model", ui->vaeModelEdit->text(), "GGUF Files (*.gguf)");
     if (!file.isEmpty()) {
         ui->vaeModelEdit->setText(file);
+    }
+}
+
+void AdvancedSettingsDialog::on_browseWorkDirButton_clicked() {
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Select the folder to generate"),
+                                                    ui->workingDirectoryLineEdit->text(),
+                                                    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    if (!dir.isEmpty()) {
+        ui->workingDirectoryLineEdit->setText(dir);
     }
 }
