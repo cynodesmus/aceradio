@@ -1,7 +1,7 @@
 #include "SongItem.h"
 
 SongItem::SongItem(const QString &caption, const QString &lyrics)
-	: caption(caption), lyrics(lyrics), cotCaption(true)
+	: caption(caption), lyrics(lyrics), cotCaption(true), bpm(0)
 {
 	uniqueId = QRandomGenerator::global()->generate64();
 }
