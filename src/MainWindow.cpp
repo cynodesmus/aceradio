@@ -244,7 +244,7 @@ void MainWindow::on_playButton_clicked() {
 }
 
 void MainWindow::on_pauseButton_clicked() {
-    if (isPlaying && !isPaused) {
+    if (isPlaying && !isPaused && audioPlayer->isPlaying()) {
         // Pause playback
         audioPlayer->pause();
         isPaused = true;
@@ -315,12 +315,13 @@ void MainWindow::on_songListView_doubleClicked(const QModelIndex & index) {
     int row = index.row();
 
     if (index.column() == 0) {
+        isPaused = false;
         if (isPlaying) {
             audioPlayer->stop();
         } else {
             isPlaying = true;
-            updateControls();
         }
+        updateControls();
 
         flushGenerationQueue();
         ui->nowPlayingLabel->setText("Now Playing: Waiting for generation...");
@@ -405,6 +406,7 @@ void MainWindow::playSong(const SongItem & song) {
     ui->nowPlayingLabel->setText("Now Playing: " + song.caption);
     ui->lyricsTextEdit->setPlainText(song.lyrics);
     ui->jsonTextEdit->setPlainText(song.json);
+    updateControls();
 }
 
 void MainWindow::songGenerated(const SongItem & song) {
